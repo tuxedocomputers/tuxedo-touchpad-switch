@@ -1,1 +1,7 @@
 /build/
+/debug/
+
+/.idea/
+/.cproject
+/.project
+/*.kdev4
