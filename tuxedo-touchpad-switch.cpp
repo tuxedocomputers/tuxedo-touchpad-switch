@@ -1,107 +1,124 @@
-#include <linux/hidraw.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdio.h>
-#include <libudev.h>
-#include <string.h>
-#include <signal.h>
+// Copyright (c) 2020 TUXEDO Computers GmbH <tux@tuxedocomputers.com>
+//
+// This file is part of TUXEDO Touchpad Switch.
+//
+// This file is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// TUXEDO Touchpad Switch is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with TUXEDO Touchpad Switch.  If not, see <https://www.gnu.org/licenses/>.
 
-#include <vector>
-#include <string>
+#include <linux/hidraw.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/ioctl.h>
+
+#include <libudev.h>
 
 #include <gio/gio.h>
 
-const char *bus_str(int bus);
+#include <iostream>
+#include <string>
+#include <vector>
+
+using std::cout;
+using std::cerr;
+using std::endl;
 
 static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
+    int result = -1;
+    
     struct udev *udev_context = udev_new();
     if (!udev_context) {
-        perror("udev_new");
-        return -1;
+        cerr << "get_touchpad_hidraw_devices(...): udev_new(...) failed." << endl;
+        return result;
     }
 
     struct udev_enumerate *hidraw_devices = udev_enumerate_new(udev_context);
     if (!hidraw_devices) {
-        perror("udev_enumerate_new");
-        udev_unref(udev_context);
-        return -1;
+        cerr << "get_touchpad_hidraw_devices(...): udev_enumerate_new(...) failed." << endl;
     }
-
-    if (udev_enumerate_add_match_subsystem(hidraw_devices, "hidraw") < 0) {
-        perror("udev_enumerate_add_match_subsystem");
-        udev_enumerate_unref(hidraw_devices);
-        udev_unref(udev_context);
-        return -1;
-    }
-
-    if (udev_enumerate_scan_devices(hidraw_devices) < 0) {
-        perror("udev_enumerate_scan_devices");
-        udev_enumerate_unref(hidraw_devices);
-        udev_unref(udev_context);
-        return -1;
-    }
-
-    struct udev_list_entry *hidraw_devices_iterator = udev_enumerate_get_list_entry(hidraw_devices);
-    if (!hidraw_devices_iterator) {
-        udev_enumerate_unref(hidraw_devices);
-        udev_unref(udev_context);
-        return -1;
-    }
-    struct udev_list_entry *hidraw_device_entry;
-    udev_list_entry_foreach(hidraw_device_entry, hidraw_devices_iterator) {
-        if (strstr(udev_list_entry_get_name(hidraw_device_entry), "i2c-UNIW0001")) {
-            struct udev_device *hidraw_device = udev_device_new_from_syspath(udev_context, udev_list_entry_get_name(hidraw_device_entry));
-            if (!hidraw_device) {
-                perror("udev_device_new_from_syspath");
-                continue;
-            }
-            
-            std::string devnode = udev_device_get_devnode(hidraw_device);
-            devnodes->push_back(devnode);
-            
-            udev_device_unref(hidraw_device);
+    else {
+        if (udev_enumerate_add_match_subsystem(hidraw_devices, "hidraw") < 0) {
+            cerr << "get_touchpad_hidraw_devices(...): udev_enumerate_add_match_subsystem(...) failed." << endl;
         }
+        else {
+            if (udev_enumerate_scan_devices(hidraw_devices) < 0) {
+                cerr << "get_touchpad_hidraw_devices(...): udev_enumerate_scan_devices(...) failed." << endl;
+            }
+            else {
+                struct udev_list_entry *hidraw_devices_iterator = udev_enumerate_get_list_entry(hidraw_devices);
+                if (!hidraw_devices_iterator) {
+                    cerr << "get_touchpad_hidraw_devices(...): udev_enumerate_get_list_entry(...) failed." << endl;
+                }
+                else {
+                    struct udev_list_entry *hidraw_device_entry;
+                    udev_list_entry_foreach(hidraw_device_entry, hidraw_devices_iterator) {
+                        if (strstr(udev_list_entry_get_name(hidraw_device_entry), "i2c-UNIW0001")) {
+                            struct udev_device *hidraw_device = udev_device_new_from_syspath(udev_context, udev_list_entry_get_name(hidraw_device_entry));
+                            if (!hidraw_device) {
+                                cerr << "get_touchpad_hidraw_devices(...): udev_device_new_from_syspath(...) failed." << endl;
+                            }
+                            else {
+                                std::string devnode = udev_device_get_devnode(hidraw_device);
+                                devnodes->push_back(devnode);
+                                
+                                udev_device_unref(hidraw_device);
+                            }
+                        }
+                    }
+                    result = devnodes->size();
+                }
+            }
+        }
+        udev_enumerate_unref(hidraw_devices);
     }
-
-    udev_enumerate_unref(hidraw_devices);
     udev_unref(udev_context);
 
-    return devnodes->size();;
+    return result;
 }
 
-void send_events_handler(GSettings *settings, const char* key, gpointer user_data) {
+void send_events_handler(GSettings *settings, const char* key, __attribute__((unused)) gpointer user_data) {
     const gchar *send_events_string = g_settings_get_string(settings, key);
     if (!send_events_string) {
-        perror("g_settings_get_string");
+        cerr << "send_events_handler(...): g_settings_get_string(...) failed." << endl;
         return;
     }
     
     std::vector<std::string> devnodes;
     int touchpad_count = get_touchpad_hidraw_devices(&devnodes);
     if (touchpad_count < 0) {
-        perror("get_touchpad_hidraw_devices");
+        cerr << "send_events_handler(...): get_touchpad_hidraw_devices(...) failed." << endl;
         return;
     }
     if (touchpad_count == 0) {
-        printf("No compatible touchpads found.\n");
+        cout << "No compatible touchpads found." << endl;
         return;
     }
     
     for (auto it = devnodes.begin(); it != devnodes.end(); ++it) {
         int hidraw = open((*it).c_str(), O_RDWR|O_NONBLOCK);
         if (hidraw < 0) {
-            perror("open");
+            cerr << "send_events_handler(...): open(\"" << *it << "\", O_RDWR|O_NONBLOCK) failed." << endl;
             continue;
         }
 
+        // default is to enable touchpad, for this send "0x03" as feature report nr.7 (0x07) to the touchpad hid device
         char buffer[2] = {0x07, 0x03};
+        // change 0x03 to 0x00 to disable touchpad when configuration string starts with [d]isable
         if (send_events_string[0] == 'd') {
             buffer[1] = 0x00;
         }
         int result = ioctl(hidraw, HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0])), buffer);
         if (result < 0) {
-            perror("ioctl");
+            cerr << "send_events_handler(...): ioctl(...) on " << *it << " failed." << endl;
             close(hidraw);
             continue;
         }
@@ -110,70 +127,37 @@ void send_events_handler(GSettings *settings, const char* key, gpointer user_dat
     }
 }
 
-void gracefull_exit(int signum) {
-    GSettings *settings_touchpad = g_settings_new("org.gnome.desktop.peripherals.touchpad");
-    if (!settings_touchpad) {
-        perror("g_settings_new");
-        exit(EXIT_FAILURE);
-    }
+int main() {
+    // Currently this programm works on desktop environments using Gnome settings only (Gnome/Budgie/Cinnamon/etc.).
+    // A KDE configuration version will be developt once this works flawless.
     
-    std::vector<std::string> devnodes;
-    int touchpad_count = get_touchpad_hidraw_devices(&devnodes);
-    if (touchpad_count < 0) {
-        perror("get_touchpad_hidraw_devices");
-        exit(EXIT_FAILURE);
-    }
-    if (touchpad_count == 0) {
-        printf("No compatible touchpads found.\n");
-        exit(EXIT_SUCCESS);
-    }
-    
-    for (auto it = devnodes.begin(); it != devnodes.end(); ++it) {
-        int hidraw = open((*it).c_str(), O_RDWR|O_NONBLOCK);
-        if (hidraw < 0) {
-            perror("open");
-            continue;
-        }
-
-        char buffer[2] = {0x07, 0x03};
-        int result = ioctl(hidraw, HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0])), buffer);
-        if (result < 0) {
-            perror("ioctl");
-            close(hidraw);
-            continue;
-        }
-
-        close(hidraw);
-    }
-    exit(EXIT_SUCCESS);
-}
-
-int main(int argc, char *argv[]) {
-    signal(SIGINT, gracefull_exit);
-    signal(SIGTERM, gracefull_exit);
-    
-    GSettings *settings_touchpad = g_settings_new("org.gnome.desktop.peripherals.touchpad");
-    if (!settings_touchpad) {
-        perror("g_settings_new");
+    // get a new glib settings context to read the touchpad configuration of the current user
+    GSettings *touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
+    if (!touchpad_settings) {
+        cerr << "main(...): g_settings_new(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
     // sync on start
-    send_events_handler(settings_touchpad, "send-events", NULL);
+    send_events_handler(touchpad_settings, "send-events", NULL);
     
-    if (g_signal_connect(settings_touchpad, "changed::send-events", G_CALLBACK(send_events_handler), NULL) < 1) {
-        perror("g_signal_connect");
+    // sync on config change
+    if (g_signal_connect(touchpad_settings, "changed::send-events", G_CALLBACK(send_events_handler), NULL) < 1) {
+        cerr << "main(...): g_signal_connect(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
+    // TODO sync on xsession change
+    
+    // start empty glib mainloop, required for glib signals to be catched
     GMainLoop *app = g_main_loop_new(NULL, TRUE);
     if (!app) {
-        perror("g_main_loop_new");
+        cerr << "main(...): g_main_loop_new(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
     g_main_loop_run(app);
     // g_main_loop_run should not return
-    perror("g_main_loop_run");
+    cerr << "main(...): g_main_loop_run(...) failed." << endl;
     return EXIT_FAILURE;
 }
