@@ -61,7 +61,7 @@ static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
                 else {
                     struct udev_list_entry *hidraw_device_entry;
                     udev_list_entry_foreach(hidraw_device_entry, hidraw_devices_iterator) {
-                        if (strstr(udev_list_entry_get_name(hidraw_device_entry), "i2c-UNIW0001")) {
+                        if (strstr(udev_list_entry_get_name(hidraw_device_entry), "i2c-UNIW0001:00")) {
                             struct udev_device *hidraw_device = udev_device_new_from_syspath(udev_context, udev_list_entry_get_name(hidraw_device_entry));
                             if (!hidraw_device) {
                                 cerr << "get_touchpad_hidraw_devices(...): udev_device_new_from_syspath(...) failed." << endl;
