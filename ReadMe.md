@@ -3,11 +3,11 @@ This a proof-of-concept Linux userspace driver to hardware-enable/-disable the t
 It syncs up with the software toggle in the gnome settings deamon.
 
 It comes with some known disfuctionalities:
-    - only works on desktop evnironments using gsettings/gio
-    - does not work on loginscreen(gdm)
-    - needs to be started for every user seperatly
-    - every user needs write access to the /dev/hidraw* device for the touchpad (udev *.rules included)
-    - switching between 2 users is not detected (on next toggle the software and hardware disable will be in sync again however)
+- only works on desktop evnironments using gsettings/gio
+- does not work on loginscreen(gdm)
+- needs to be started for every user seperatly
+- every user needs write access to the /dev/hidraw* device for the touchpad (udev *.rules included)
+- switching between 2 users is not detected (on next toggle the software and hardware disable will be in sync again however)
 
 Author: Werner Sembach
 
