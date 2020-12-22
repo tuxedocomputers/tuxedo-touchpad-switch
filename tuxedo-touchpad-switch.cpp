@@ -138,14 +138,14 @@ int main() {
         return EXIT_FAILURE;
     }
     
-    // sync on start
-    send_events_handler(touchpad_settings, "send-events", NULL);
-    
     // sync on config change
     if (g_signal_connect(touchpad_settings, "changed::send-events", G_CALLBACK(send_events_handler), NULL) < 1) {
         cerr << "main(...): g_signal_connect(...) failed." << endl;
         return EXIT_FAILURE;
     }
+    
+    // sync on start
+    send_events_handler(touchpad_settings, "send-events", NULL);
     
     // TODO sync on xsession change
     
