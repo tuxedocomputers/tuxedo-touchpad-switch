@@ -1,0 +1,10 @@
+[Unit]
+Description=TUXEDO Touchpad Switch
+After=gdm.service
+
+[Service]
+User=gdm
+ExecStart=/usr/bin/tuxedo-touchpad-switch
+
+[Install]
+WantedBy=gdm.service
