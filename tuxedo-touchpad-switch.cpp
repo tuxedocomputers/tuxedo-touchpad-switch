@@ -104,7 +104,7 @@ void send_events_handler(GSettings *settings, const char* key, __attribute__((un
     }
     
     for (auto it = devnodes.begin(); it != devnodes.end(); ++it) {
-        int hidraw = open((*it).c_str(), O_RDWR|O_NONBLOCK);
+        int hidraw = open((*it).c_str(), O_WRONLY|O_NONBLOCK);
         if (hidraw < 0) {
             cerr << "send_events_handler(...): open(\"" << *it << "\", O_RDWR|O_NONBLOCK) failed." << endl;
             continue;
