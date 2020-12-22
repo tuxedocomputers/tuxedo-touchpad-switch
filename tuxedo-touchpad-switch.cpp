@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <signal.h>
 
 #include <libudev.h>
 
@@ -33,7 +34,7 @@ using std::cerr;
 using std::endl;
 
 static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
-    int result = -1;
+    int result = -EXIT_FAILURE;
     
     struct udev *udev_context = udev_new();
     if (!udev_context) {
@@ -85,36 +86,30 @@ static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
     return result;
 }
 
-void send_events_handler(GSettings *settings, const char* key, __attribute__((unused)) gpointer user_data) {
-    const gchar *send_events_string = g_settings_get_string(settings, key);
-    if (!send_events_string) {
-        cerr << "send_events_handler(...): g_settings_get_string(...) failed." << endl;
-        return;
-    }
-    
+int set_touchpad_state(int enabled) {
     std::vector<std::string> devnodes;
     int touchpad_count = get_touchpad_hidraw_devices(&devnodes);
     if (touchpad_count < 0) {
         cerr << "send_events_handler(...): get_touchpad_hidraw_devices(...) failed." << endl;
-        return;
+        return EXIT_FAILURE;
     }
     if (touchpad_count == 0) {
         cout << "No compatible touchpads found." << endl;
-        return;
+        return EXIT_FAILURE;
     }
     
     for (auto it = devnodes.begin(); it != devnodes.end(); ++it) {
         int hidraw = open((*it).c_str(), O_WRONLY|O_NONBLOCK);
         if (hidraw < 0) {
-            cerr << "send_events_handler(...): open(\"" << *it << "\", O_RDWR|O_NONBLOCK) failed." << endl;
+            cerr << "send_events_handler(...): open(\"" << *it << "\", O_WRONLY|O_NONBLOCK) failed." << endl;
             continue;
         }
 
         // default is to enable touchpad, for this send "0x03" as feature report nr.7 (0x07) to the touchpad hid device
-        char buffer[2] = {0x07, 0x03};
+        char buffer[2] = {0x07, 0x00};
         // change 0x03 to 0x00 to disable touchpad when configuration string starts with [d]isable
-        if (send_events_string[0] == 'd') {
-            buffer[1] = 0x00;
+        if (enabled) {
+            buffer[1] = 0x03;
         }
         int result = ioctl(hidraw, HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0])), buffer);
         if (result < 0) {
@@ -125,11 +120,36 @@ void send_events_handler(GSettings *settings, const char* key, __attribute__((un
 
         close(hidraw);
     }
+    
+    return EXIT_SUCCESS;
+}
+
+void gracefull_exit(int signum) {
+    exit(set_touchpad_state(1));
+}
+
+void send_events_handler(GSettings *settings, const char* key, __attribute__((unused)) gpointer user_data) {
+    const gchar *send_events_string = g_settings_get_string(settings, key);
+    if (!send_events_string) {
+        cerr << "send_events_handler(...): g_settings_get_string(...) failed." << endl;
+        return;
+    }
+    
+    int enabled = 0;
+    if (send_events_string[0] == 'e') {
+        enabled = 1;
+    }
+    
+    if (set_touchpad_state(enabled)) {
+        cerr << "send_events_handler(...): set_touchpad_state(...) failed." << endl;
+    }
 }
 
 int main() {
     // Currently this programm works on desktop environments using Gnome settings only (Gnome/Budgie/Cinnamon/etc.).
     // A KDE configuration version will be developt once this works flawless.
+    signal(SIGINT, gracefull_exit); 
+    signal(SIGTERM, gracefull_exit); 
     
     // get a new glib settings context to read the touchpad configuration of the current user
     GSettings *touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
