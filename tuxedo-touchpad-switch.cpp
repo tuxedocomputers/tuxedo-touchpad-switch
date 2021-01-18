@@ -153,12 +153,7 @@ void  properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVar
         g_variant_dict_init (&changed_properties_dict, changed_properties);
         if (g_variant_dict_lookup (&changed_properties_dict, "SessionIsActive", "b", &sessionIsActive)) {
             if (sessionIsActive) {
-                GSettings *touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
-                if (!touchpad_settings) {
-                    cerr << "properties_changed_handler(...): g_settings_new(...) failed." << endl;
-                    return;
-                }
-                send_events_handler(touchpad_settings, "send-events", NULL);
+                send_events_handler((GSettings *)user_data, "send-events", NULL);
             }
         }
     }
@@ -196,7 +191,7 @@ int main() {
         return EXIT_FAILURE;
     }
     
-    if (g_signal_connect(session_manager_properties, "g-properties-changed", G_CALLBACK(properties_changed_handler), NULL) < 1) {
+    if (g_signal_connect(session_manager_properties, "g-properties-changed", G_CALLBACK(properties_changed_handler), touchpad_settings) < 1) {
         cerr << "main(...): g_signal_connect(...) failed." << endl;
         g_object_unref(session_manager_properties);
         return EXIT_FAILURE;
