@@ -10,9 +10,9 @@ target_link_libraries(tuxedo-touchpad-switch udev PkgConfig::deps)
 
 install(TARGETS tuxedo-touchpad-switch DESTINATION bin/)
 install(FILES res/99-tuxedo-touchpad-switch.rules DESTINATION lib/udev/rules.d/)
-install(FILES res/tuxedo-touchpad-switch.desktop DESTINATION /etc/xdg/autostart/) # absolute path on purpose for this file only:
-                                                                                  # $XDG_CONFIG_DIRS dos not include a folder under /usr/ by default 
-                                                                                  # https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html#variables
+install(FILES res/tuxedo-touchpad-switch-lockfile DESTINATION /etc/ PERMISSIONS OWNER_READ GROUP_READ WORLD_READ) # absolute path on purpose: implemented as such in tuxedo-touchpad-switch.cpp
+install(FILES res/tuxedo-touchpad-switch.desktop DESTINATION /usr/share/gdm/greeter/autostart/) # absolute path on purpose: gdm has no config dir in /usr/local/
+install(FILES res/tuxedo-touchpad-switch.desktop DESTINATION /etc/xdg/autostart/) # absolute path on purpose: $XDG_CONFIG_DIRS dos not include a folder under /usr/ by default https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html#variables
 
 SET(CPACK_GENERATOR DEB RPM)
 SET(CPACK_PACKAGE_CONTACT "Werner Sembach <tux@tuxedocomputers.com>")

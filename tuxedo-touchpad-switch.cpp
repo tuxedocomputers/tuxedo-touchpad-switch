@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/file.h>
 #include <signal.h>
 
 #include <libudev.h>
@@ -32,6 +33,8 @@
 using std::cout;
 using std::cerr;
 using std::endl;
+
+int lockfile;
 
 static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
     int result = -EXIT_FAILURE;
@@ -125,7 +128,12 @@ int set_touchpad_state(int enabled) {
 }
 
 void gracefull_exit(int signum) {
-    exit(set_touchpad_state(1));
+    int result = set_touchpad_state(1);
+    if (flock(lockfile, LOCK_UN)) {
+        cerr << "main(...): flock(...) failed." << endl;
+    }
+    close(lockfile);
+    exit(result);
 }
 
 void send_events_handler(GSettings *settings, const char* key, __attribute__((unused)) gpointer user_data) {
@@ -153,7 +161,18 @@ void  properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVar
         g_variant_dict_init (&changed_properties_dict, changed_properties);
         if (g_variant_dict_lookup (&changed_properties_dict, "SessionIsActive", "b", &sessionIsActive)) {
             if (sessionIsActive) {
+                if (flock(lockfile, LOCK_EX)) {
+                    cerr << "main(...): flock(...) failed." << endl;
+                }
                 send_events_handler((GSettings *)user_data, "send-events", NULL);
+            }
+            else {
+                if (set_touchpad_state(1)) {
+                    cerr << "properties_changed_handler(...): set_touchpad_state(...) failed." << endl;
+                }
+                if (flock(lockfile, LOCK_UN)) {
+                    cerr << "main(...): flock(...) failed." << endl;
+                }
             }
         }
     }
@@ -162,13 +181,26 @@ void  properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVar
 int main() {
     // Currently this programm works on desktop environments using Gnome settings only (Gnome/Budgie/Cinnamon/etc.).
     // A KDE configuration version will be developt once this works flawless.
-    signal(SIGINT, gracefull_exit); 
-    signal(SIGTERM, gracefull_exit); 
+    lockfile = open("/etc/tuxedo-touchpad-switch-lockfile", O_RDONLY);
+    if (lockfile < 0) {
+        cerr << "main(...): open(...) failed." << endl;
+        return EXIT_FAILURE;
+    }
+    
+    signal(SIGINT, gracefull_exit);
+    signal(SIGTERM, gracefull_exit);
+    
+    if (flock(lockfile, LOCK_EX)) {
+        cerr << "main(...): flock(...) failed." << endl;
+        close(lockfile);
+        return EXIT_FAILURE;
+    }
     
     // get a new glib settings context to read the touchpad configuration of the current user
     GSettings *touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
     if (!touchpad_settings) {
         cerr << "main(...): g_settings_new(...) failed." << endl;
+        close(lockfile);
         return EXIT_FAILURE;
     }
     
@@ -176,6 +208,7 @@ int main() {
     // sync on config change
     if (g_signal_connect(touchpad_settings, "changed::send-events", G_CALLBACK(send_events_handler), NULL) < 1) {
         cerr << "main(...): g_signal_connect(...) failed." << endl;
+        close(lockfile);
         return EXIT_FAILURE;
     }
     
@@ -188,11 +221,13 @@ int main() {
     GDBusProxy *session_manager_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_NONE, NULL, "org.gnome.SessionManager", "/org/gnome/SessionManager", "org.gnome.SessionManager", NULL, NULL);
     if (session_manager_properties == NULL) {
         cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        close(lockfile);
         return EXIT_FAILURE;
     }
     
     if (g_signal_connect(session_manager_properties, "g-properties-changed", G_CALLBACK(properties_changed_handler), touchpad_settings) < 1) {
         cerr << "main(...): g_signal_connect(...) failed." << endl;
+        close(lockfile);
         g_object_unref(session_manager_properties);
         return EXIT_FAILURE;
     }
@@ -202,6 +237,7 @@ int main() {
     GMainLoop *app = g_main_loop_new(NULL, TRUE);
     if (!app) {
         cerr << "main(...): g_main_loop_new(...) failed." << endl;
+        close(lockfile);
         g_object_unref(session_manager_properties);
         return EXIT_FAILURE;
     }
@@ -209,6 +245,7 @@ int main() {
     g_main_loop_run(app);
     // g_main_loop_run should not return
     cerr << "main(...): g_main_loop_run(...) failed." << endl;
+    close(lockfile);
     g_object_unref(session_manager_properties);
     return EXIT_FAILURE;
 }
