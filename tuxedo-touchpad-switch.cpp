@@ -153,7 +153,7 @@ void send_events_handler(GSettings *settings, const char* key, __attribute__((un
     }
 }
 
-void  properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVariant *changed_properties, __attribute__((unused)) GStrv invalidated_properties, __attribute__((unused)) gpointer user_data) {
+void  session_manager_properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVariant *changed_properties, __attribute__((unused)) GStrv invalidated_properties, gpointer user_data) {
     if (g_variant_is_of_type(changed_properties, G_VARIANT_TYPE_VARDICT)) {
         GVariantDict changed_properties_dict;
         gboolean sessionIsActive;
@@ -162,7 +162,7 @@ void  properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVar
         if (g_variant_dict_lookup (&changed_properties_dict, "SessionIsActive", "b", &sessionIsActive)) {
             if (sessionIsActive) {
                 if (flock(lockfile, LOCK_EX)) {
-                    cerr << "main(...): flock(...) failed." << endl;
+                    cerr << "properties_changed_handler(...): flock(...) failed." << endl;
                 }
                 send_events_handler((GSettings *)user_data, "send-events", NULL);
             }
@@ -171,8 +171,23 @@ void  properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVar
                     cerr << "properties_changed_handler(...): set_touchpad_state(...) failed." << endl;
                 }
                 if (flock(lockfile, LOCK_UN)) {
-                    cerr << "main(...): flock(...) failed." << endl;
+                    cerr << "properties_changed_handler(...): flock(...) failed." << endl;
                 }
+            }
+        }
+    }
+}
+
+void  display_config_properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVariant *changed_properties, __attribute__((unused)) GStrv invalidated_properties, gpointer user_data) {
+    if (g_variant_is_of_type(changed_properties, G_VARIANT_TYPE_VARDICT)) {
+        GVariantDict changed_properties_dict;
+        gint32 powerSaveMode;
+
+        g_variant_dict_init (&changed_properties_dict, changed_properties);
+        if (g_variant_dict_lookup (&changed_properties_dict, "PowerSaveMode", "i", &powerSaveMode)) {
+            cout << powerSaveMode << endl;
+            if (powerSaveMode == 0) {
+                send_events_handler((GSettings *)user_data, "send-events", NULL);
             }
         }
     }
@@ -184,7 +199,7 @@ int main() {
     lockfile = open("/etc/tuxedo-touchpad-switch-lockfile", O_RDONLY);
     if (lockfile < 0) {
         cerr << "main(...): open(...) failed." << endl;
-        return EXIT_FAILURE;
+        gracefull_exit(0);
     }
     
     signal(SIGINT, gracefull_exit);
@@ -192,24 +207,55 @@ int main() {
     
     if (flock(lockfile, LOCK_EX)) {
         cerr << "main(...): flock(...) failed." << endl;
-        close(lockfile);
-        return EXIT_FAILURE;
+        gracefull_exit(0);
     }
     
     // get a new glib settings context to read the touchpad configuration of the current user
     GSettings *touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
     if (!touchpad_settings) {
         cerr << "main(...): g_settings_new(...) failed." << endl;
-        close(lockfile);
-        return EXIT_FAILURE;
+        gracefull_exit(0);
     }
     
     
     // sync on config change
     if (g_signal_connect(touchpad_settings, "changed::send-events", G_CALLBACK(send_events_handler), NULL) < 1) {
         cerr << "main(...): g_signal_connect(...) failed." << endl;
-        close(lockfile);
-        return EXIT_FAILURE;
+        gracefull_exit(0);
+    }
+    
+    
+    // sync on xsession change
+    GDBusProxy *session_manager_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+                                                                           G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                                                           "org.gnome.SessionManager",
+                                                                           "/org/gnome/SessionManager",
+                                                                           "org.gnome.SessionManager",
+                                                                           NULL, NULL);
+    if (session_manager_properties == NULL) {
+        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        gracefull_exit(0);
+    }
+    if (g_signal_connect(session_manager_properties, "g-properties-changed", G_CALLBACK(session_manager_properties_changed_handler), touchpad_settings) < 1) {
+        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        gracefull_exit(0);
+    }
+    
+    
+    // sync on wakeup
+    GDBusProxy *display_config_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+                                                                                 G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                                                                 "org.gnome.Mutter.DisplayConfig",
+                                                                                 "/org/gnome/Mutter/DisplayConfig",
+                                                                                 "org.gnome.Mutter.DisplayConfig",
+                                                                                 NULL, NULL);
+    if (display_config_properties == NULL) {
+        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        gracefull_exit(0);
+    }
+    if (g_signal_connect(display_config_properties, "g-properties-changed", G_CALLBACK(display_config_properties_changed_handler), touchpad_settings) < 1) {
+        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        gracefull_exit(0);
     }
     
     
@@ -217,35 +263,15 @@ int main() {
     send_events_handler(touchpad_settings, "send-events", NULL);
     
     
-    // sync on xsession change
-    GDBusProxy *session_manager_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION, G_DBUS_PROXY_FLAGS_NONE, NULL, "org.gnome.SessionManager", "/org/gnome/SessionManager", "org.gnome.SessionManager", NULL, NULL);
-    if (session_manager_properties == NULL) {
-        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
-        close(lockfile);
-        return EXIT_FAILURE;
-    }
-    
-    if (g_signal_connect(session_manager_properties, "g-properties-changed", G_CALLBACK(properties_changed_handler), touchpad_settings) < 1) {
-        cerr << "main(...): g_signal_connect(...) failed." << endl;
-        close(lockfile);
-        g_object_unref(session_manager_properties);
-        return EXIT_FAILURE;
-    }
-    
-    
     // start empty glib mainloop, required for glib signals to be catched
     GMainLoop *app = g_main_loop_new(NULL, TRUE);
     if (!app) {
         cerr << "main(...): g_main_loop_new(...) failed." << endl;
-        close(lockfile);
-        g_object_unref(session_manager_properties);
-        return EXIT_FAILURE;
+        gracefull_exit(0);
     }
     
     g_main_loop_run(app);
-    // g_main_loop_run should not return
+    // g_main_loop_run only returns on error
     cerr << "main(...): g_main_loop_run(...) failed." << endl;
-    close(lockfile);
-    g_object_unref(session_manager_properties);
-    return EXIT_FAILURE;
+    gracefull_exit(0);
 }
