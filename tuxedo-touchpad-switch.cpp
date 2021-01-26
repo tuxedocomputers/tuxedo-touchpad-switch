@@ -34,7 +34,8 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-int lockfile;
+int lockfile = -1;
+gboolean isMousePluggedInPrev = TRUE;
 
 static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
     int result = -EXIT_FAILURE;
@@ -193,6 +194,48 @@ void  display_config_properties_changed_handler(__attribute__((unused)) GDBusPro
     }
 }
 
+void  kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unused)) char *sender_name, char *signal_name, GVariant *parameters, __attribute__((unused)) gpointer user_data) {
+    if (!strcmp("enabledChanged", signal_name) && g_variant_is_of_type(parameters, (const GVariantType *)"(b)") && g_variant_n_children(parameters)) {
+        GVariant *enabledChanged = g_variant_get_child_value(parameters, 0);
+        if (g_variant_get_boolean(enabledChanged)) {
+            if (set_touchpad_state(1)) {
+                cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+            }
+        }
+        else {
+            if (set_touchpad_state(0)) {
+                cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+            }
+        }
+        g_variant_unref(enabledChanged);
+    }
+    else if (!strcmp("mousePluggedInChanged", signal_name) && g_variant_is_of_type(parameters, (const GVariantType *)"(b)") && g_variant_n_children(parameters)) {
+        GVariant *isMousePluggedInParam = g_dbus_proxy_call_sync(proxy, "isMousePluggedIn", NULL, G_DBUS_CALL_FLAGS_NONE, G_MAXINT, NULL, NULL);
+        if (isMousePluggedInParam != NULL && g_variant_is_of_type(isMousePluggedInParam, (const GVariantType *)"(b)") && g_variant_n_children(isMousePluggedInParam)) {
+            GVariant *isMousePluggedIn = g_variant_get_child_value(isMousePluggedInParam, 0);
+            if (!g_variant_get_boolean(isMousePluggedIn)) {
+                if (set_touchpad_state(1)) {
+                    cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+                }
+                if (flock(lockfile, LOCK_UN)) {
+                    cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
+                }
+            }
+            else if (!isMousePluggedInPrev) {
+                if (flock(lockfile, LOCK_EX)) {
+                    cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
+                }
+            }
+            isMousePluggedInPrev = g_variant_get_boolean(isMousePluggedIn);
+            g_variant_unref(isMousePluggedIn);
+            g_variant_unref(isMousePluggedInParam);
+        }
+        else {
+            cerr << "kded5_modules_touchpad_handler(...): g_dbus_proxy_call_sync(...) failed." << endl;
+        }
+    }
+}
+
 int main() {
     // Currently this programm works on desktop environments using Gnome settings only (Gnome/Budgie/Cinnamon/etc.).
     // A KDE configuration version will be developt once this works flawless.
@@ -202,6 +245,7 @@ int main() {
         gracefull_exit(0);
     }
     
+    //FIXME singal(...) deprecated -> man signal
     signal(SIGINT, gracefull_exit);
     signal(SIGTERM, gracefull_exit);
     
@@ -244,16 +288,33 @@ int main() {
     
     // sync on wakeup
     GDBusProxy *display_config_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
-                                                                                 G_DBUS_PROXY_FLAGS_NONE, NULL,
-                                                                                 "org.gnome.Mutter.DisplayConfig",
-                                                                                 "/org/gnome/Mutter/DisplayConfig",
-                                                                                 "org.gnome.Mutter.DisplayConfig",
-                                                                                 NULL, NULL);
+                                                                          G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                                                          "org.gnome.Mutter.DisplayConfig",
+                                                                          "/org/gnome/Mutter/DisplayConfig",
+                                                                          "org.gnome.Mutter.DisplayConfig",
+                                                                          NULL, NULL);
     if (display_config_properties == NULL) {
         cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
         gracefull_exit(0);
     }
     if (g_signal_connect(display_config_properties, "g-properties-changed", G_CALLBACK(display_config_properties_changed_handler), touchpad_settings) < 1) {
+        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        gracefull_exit(0);
+    }
+
+
+    // sync on config or xsession change kde
+    GDBusProxy *kded5_modules_touchpad = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+                                                                       G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                                                       "org.kde.kded5",
+                                                                       "/modules/touchpad",
+                                                                       "org.kde.touchpad",
+                                                                       NULL, NULL);
+    if (kded5_modules_touchpad == NULL) {
+        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        gracefull_exit(0);
+    }
+    if (g_signal_connect(kded5_modules_touchpad, "g-signal", G_CALLBACK(kded5_modules_touchpad_handler), NULL) < 1) {
         cerr << "main(...): g_signal_connect(...) failed." << endl;
         gracefull_exit(0);
     }
