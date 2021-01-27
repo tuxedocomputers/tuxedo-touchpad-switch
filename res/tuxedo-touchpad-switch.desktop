@@ -2,4 +2,3 @@
 Name=TUXEDO Touchpad Switch
 Exec=tuxedo-touchpad-switch
 Type=Application
-OnlyShowIn=GNOME;
