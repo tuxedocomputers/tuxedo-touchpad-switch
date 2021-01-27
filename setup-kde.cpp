@@ -79,6 +79,25 @@ static void kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unu
     }
 }
 
+static void solid_power_management_handler(__attribute__((unused)) GDBusProxy *proxy, __attribute__((unused)) char *sender_name, char *signal_name, __attribute__((unused)) GVariant *parameters, __attribute__((unused)) gpointer user_data) {
+    if (!strcmp("aboutToSuspend", signal_name)) {
+        if (set_touchpad_state(1)) {
+            cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+        }
+        if (flock(lockfile, LOCK_UN)) {
+            cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
+        }
+    }
+    else if (!strcmp("resumingFromSuspend", signal_name)) {
+        if (flock(lockfile, LOCK_EX)) {
+            cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
+        }
+        if (set_touchpad_state(isEnabledSave)) {
+            cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+        }
+    }
+}
+
 static int kded5_modules_touchpad_init(GDBusProxy *proxy) {
     GVariant *isEnabledParam = g_dbus_proxy_call_sync(proxy, "isEnabled", NULL, G_DBUS_CALL_FLAGS_NONE, G_MAXINT, NULL, NULL);
     if (isEnabledParam != NULL && g_variant_is_of_type(isEnabledParam, (const GVariantType *)"(b)") && g_variant_n_children(isEnabledParam)) {
@@ -140,7 +159,7 @@ static int kded5_modules_touchpad_init(GDBusProxy *proxy) {
 int setup_kde(int lockfile_arg) {
     lockfile = lockfile_arg;
     
-    // sync on config change, xsession change, and wakeup kde
+    // sync on config and xsession change
     GDBusProxy *kded5_modules_touchpad = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                                                        G_DBUS_PROXY_FLAGS_NONE, NULL,
                                                                        "org.kde.kded5",
@@ -152,6 +171,22 @@ int setup_kde(int lockfile_arg) {
         return EXIT_FAILURE;
     }
     if (g_signal_connect(kded5_modules_touchpad, "g-signal", G_CALLBACK(kded5_modules_touchpad_handler), NULL) < 1) {
+        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        return EXIT_FAILURE;
+    }
+    
+    // sync on wakeup
+    GDBusProxy *solid_power_management = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+                                                                       G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                                                       "org.kde.Solid.PowerManagement",
+                                                                       "/org/kde/Solid/PowerManagement/Actions/SuspendSession",
+                                                                       "org.kde.Solid.PowerManagement.Actions.SuspendSession",
+                                                                       NULL, NULL);
+    if (solid_power_management == NULL) {
+        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        return EXIT_FAILURE;
+    }
+    if (g_signal_connect(solid_power_management, "g-signal", G_CALLBACK(solid_power_management_handler), NULL) < 1) {
         cerr << "main(...): g_signal_connect(...) failed." << endl;
         return EXIT_FAILURE;
     }
