@@ -35,6 +35,8 @@ using std::cerr;
 using std::endl;
 
 int lockfile;
+gboolean isMousePluggedInPrev;
+gboolean isEnabledSave;
 
 static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
     int result = -EXIT_FAILURE;
@@ -136,61 +138,109 @@ void gracefull_exit(int signum) {
     exit(result);
 }
 
-void send_events_handler(GSettings *settings, const char* key, __attribute__((unused)) gpointer user_data) {
-    const gchar *send_events_string = g_settings_get_string(settings, key);
-    if (!send_events_string) {
-        cerr << "send_events_handler(...): g_settings_get_string(...) failed." << endl;
-        return;
-    }
-    
-    int enabled = 0;
-    if (send_events_string[0] == 'e') {
-        enabled = 1;
-    }
-    
-    if (set_touchpad_state(enabled)) {
-        cerr << "send_events_handler(...): set_touchpad_state(...) failed." << endl;
-    }
-}
-
-void  session_manager_properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVariant *changed_properties, __attribute__((unused)) GStrv invalidated_properties, gpointer user_data) {
-    if (g_variant_is_of_type(changed_properties, G_VARIANT_TYPE_VARDICT)) {
-        GVariantDict changed_properties_dict;
-        gboolean sessionIsActive;
-
-        g_variant_dict_init (&changed_properties_dict, changed_properties);
-        if (g_variant_dict_lookup (&changed_properties_dict, "SessionIsActive", "b", &sessionIsActive)) {
-            if (sessionIsActive) {
-                if (flock(lockfile, LOCK_EX)) {
-                    cerr << "properties_changed_handler(...): flock(...) failed." << endl;
-                }
-                send_events_handler((GSettings *)user_data, "send-events", NULL);
+void  kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unused)) char *sender_name, char *signal_name, GVariant *parameters, __attribute__((unused)) gpointer user_data) {
+    if (!strcmp("enabledChanged", signal_name) && g_variant_is_of_type(parameters, (const GVariantType *)"(b)") && g_variant_n_children(parameters)) {
+        GVariant *enabledChanged = g_variant_get_child_value(parameters, 0);
+        
+        isEnabledSave = g_variant_get_boolean(enabledChanged);
+        if (isEnabledSave) {
+            if (set_touchpad_state(1)) {
+                cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
             }
-            else {
+        }
+        else {
+            if (set_touchpad_state(0)) {
+                cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+            }
+        }
+        g_variant_unref(enabledChanged);
+    }
+    else if (!strcmp("mousePluggedInChanged", signal_name) && g_variant_is_of_type(parameters, (const GVariantType *)"(b)") && g_variant_n_children(parameters)) {
+        GVariant *isMousePluggedInParam = g_dbus_proxy_call_sync(proxy, "isMousePluggedIn", NULL, G_DBUS_CALL_FLAGS_NONE, G_MAXINT, NULL, NULL);
+        if (isMousePluggedInParam != NULL && g_variant_is_of_type(isMousePluggedInParam, (const GVariantType *)"(b)") && g_variant_n_children(isMousePluggedInParam)) {
+            GVariant *isMousePluggedIn = g_variant_get_child_value(isMousePluggedInParam, 0);
+            if (!g_variant_get_boolean(isMousePluggedIn)) {
                 if (set_touchpad_state(1)) {
-                    cerr << "properties_changed_handler(...): set_touchpad_state(...) failed." << endl;
+                    cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
                 }
                 if (flock(lockfile, LOCK_UN)) {
-                    cerr << "properties_changed_handler(...): flock(...) failed." << endl;
+                    cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
                 }
             }
+            else if (!isMousePluggedInPrev) {
+                if (flock(lockfile, LOCK_EX)) {
+                    cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
+                }
+                if (set_touchpad_state(isEnabledSave)) {
+                    cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+                }
+            }
+            isMousePluggedInPrev = g_variant_get_boolean(isMousePluggedIn);
+            g_variant_unref(isMousePluggedIn);
+            g_variant_unref(isMousePluggedInParam);
+        }
+        else {
+            cerr << "kded5_modules_touchpad_handler(...): g_dbus_proxy_call_sync(...) failed." << endl;
         }
     }
 }
 
-void  display_config_properties_changed_handler(__attribute__((unused)) GDBusProxy *proxy, GVariant *changed_properties, __attribute__((unused)) GStrv invalidated_properties, gpointer user_data) {
-    if (g_variant_is_of_type(changed_properties, G_VARIANT_TYPE_VARDICT)) {
-        GVariantDict changed_properties_dict;
-        gint32 powerSaveMode;
+int kded5_modules_touchpad_init(GDBusProxy *proxy) {
+    GVariant *isEnabledParam = g_dbus_proxy_call_sync(proxy, "isEnabled", NULL, G_DBUS_CALL_FLAGS_NONE, G_MAXINT, NULL, NULL);
+    if (isEnabledParam != NULL && g_variant_is_of_type(isEnabledParam, (const GVariantType *)"(b)") && g_variant_n_children(isEnabledParam)) {
+        GVariant *isEnabled = g_variant_get_child_value(isEnabledParam, 0);
 
-        g_variant_dict_init (&changed_properties_dict, changed_properties);
-        if (g_variant_dict_lookup (&changed_properties_dict, "PowerSaveMode", "i", &powerSaveMode)) {
-            cout << powerSaveMode << endl;
-            if (powerSaveMode == 0) {
-                send_events_handler((GSettings *)user_data, "send-events", NULL);
+        // init isEnabledSave
+        isEnabledSave = g_variant_get_boolean(isEnabled);
+        if (isEnabledSave) {
+            if (set_touchpad_state(1)) {
+                cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+                return EXIT_FAILURE;
             }
         }
+        else {
+            if (set_touchpad_state(0)) {
+                cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+                return EXIT_FAILURE;
+            }
+        }
+
+        g_variant_unref(isEnabled);
+        g_variant_unref(isEnabledParam);
     }
+    else {
+        cerr << "kded5_modules_touchpad_handler(...): g_dbus_proxy_call_sync(...) failed." << endl;
+        return EXIT_FAILURE;
+    }
+
+    GVariant *isMousePluggedInParam = g_dbus_proxy_call_sync(proxy, "isMousePluggedIn", NULL, G_DBUS_CALL_FLAGS_NONE, G_MAXINT, NULL, NULL);
+    if (isMousePluggedInParam != NULL && g_variant_is_of_type(isMousePluggedInParam, (const GVariantType *)"(b)") && g_variant_n_children(isMousePluggedInParam)) {
+        GVariant *isMousePluggedIn = g_variant_get_child_value(isMousePluggedInParam, 0);
+        
+        // init isMousePluggedInPrev, should always be true on init, this is here to be on the save side
+        isMousePluggedInPrev = g_variant_get_boolean(isMousePluggedIn);
+        
+        // isMousePluggedInPrev just got init so it holds the current value
+        if (!isMousePluggedInPrev) {
+            if (set_touchpad_state(1)) {
+                cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
+                return EXIT_FAILURE;
+            }
+            if (flock(lockfile, LOCK_UN)) {
+                cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
+                return EXIT_FAILURE;
+            }
+        }
+        
+        g_variant_unref(isMousePluggedIn);
+        g_variant_unref(isMousePluggedInParam);
+    }
+    else {
+        cerr << "kded5_modules_touchpad_handler(...): g_dbus_proxy_call_sync(...) failed." << endl;
+        return EXIT_FAILURE;
+    }
+
+    return EXIT_SUCCESS;
 }
 
 int main() {
@@ -208,58 +258,30 @@ int main() {
         cerr << "main(...): flock(...) failed." << endl;
         gracefull_exit(0);
     }
-    
-    // get a new glib settings context to read the touchpad configuration of the current user
-    GSettings *touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
-    if (!touchpad_settings) {
-        cerr << "main(...): g_settings_new(...) failed." << endl;
-        gracefull_exit(0);
-    }
-    
-    
-    // sync on config change
-    if (g_signal_connect(touchpad_settings, "changed::send-events", G_CALLBACK(send_events_handler), NULL) < 1) {
-        cerr << "main(...): g_signal_connect(...) failed." << endl;
-        gracefull_exit(0);
-    }
-    
-    
-    // sync on xsession change
-    GDBusProxy *session_manager_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
-                                                                           G_DBUS_PROXY_FLAGS_NONE, NULL,
-                                                                           "org.gnome.SessionManager",
-                                                                           "/org/gnome/SessionManager",
-                                                                           "org.gnome.SessionManager",
-                                                                           NULL, NULL);
-    if (session_manager_properties == NULL) {
+
+
+    // sync on config change, xsession change, and wakeup kde
+    GDBusProxy *kded5_modules_touchpad = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+                                                                       G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                                                       "org.kde.kded5",
+                                                                       "/modules/touchpad",
+                                                                       "org.kde.touchpad",
+                                                                       NULL, NULL);
+    if (kded5_modules_touchpad == NULL) {
         cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
         gracefull_exit(0);
     }
-    if (g_signal_connect(session_manager_properties, "g-properties-changed", G_CALLBACK(session_manager_properties_changed_handler), touchpad_settings) < 1) {
-        cerr << "main(...): g_signal_connect(...) failed." << endl;
-        gracefull_exit(0);
-    }
-    
-    
-    // sync on wakeup
-    GDBusProxy *display_config_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
-                                                                          G_DBUS_PROXY_FLAGS_NONE, NULL,
-                                                                          "org.gnome.Mutter.DisplayConfig",
-                                                                          "/org/gnome/Mutter/DisplayConfig",
-                                                                          "org.gnome.Mutter.DisplayConfig",
-                                                                          NULL, NULL);
-    if (display_config_properties == NULL) {
-        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
-        gracefull_exit(0);
-    }
-    if (g_signal_connect(display_config_properties, "g-properties-changed", G_CALLBACK(display_config_properties_changed_handler), touchpad_settings) < 1) {
+    if (g_signal_connect(kded5_modules_touchpad, "g-signal", G_CALLBACK(kded5_modules_touchpad_handler), NULL) < 1) {
         cerr << "main(...): g_signal_connect(...) failed." << endl;
         gracefull_exit(0);
     }
     
     
     // sync on start
-    send_events_handler(touchpad_settings, "send-events", NULL);
+    if (kded5_modules_touchpad_init(kded5_modules_touchpad) == EXIT_FAILURE) {
+        cerr << "main(...): kded5_modules_touchpad_init(...) failed." << endl;
+        gracefull_exit(0);
+    }
     
     
     // start empty glib mainloop, required for glib signals to be catched
