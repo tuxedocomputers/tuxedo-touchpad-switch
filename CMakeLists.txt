@@ -16,7 +16,7 @@ install(FILES res/tuxedo-touchpad-switch.desktop DESTINATION /etc/xdg/autostart/
 
 SET(CPACK_GENERATOR DEB)
 SET(CPACK_PACKAGE_CONTACT "Werner Sembach <tux@tuxedocomputers.com>")
-SET(CPACK_PACKAGE_VERSION 0.0.1)
+SET(CPACK_PACKAGE_VERSION 0.0.2)
 SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hardware toggle for Tongfang/Uniwill i2c touchpads. This will toggle the touchpad-disabled-led.")
 SET(CPACK_DEBIAN_PACKAGE_SECTION admin)
 include(CPack)
