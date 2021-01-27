@@ -1,6 +1,28 @@
+# Copyright (c) 2020 TUXEDO Computers GmbH <tux@tuxedocomputers.com>
+#
+# This file is part of TUXEDO Touchpad Switch.
+#
+# This file is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# TUXEDO Touchpad Switch is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with TUXEDO Touchpad Switch.  If not, see <https://www.gnu.org/licenses/>.
+
 cmake_minimum_required(VERSION 3.6)
 
-project(tuxedo-touchpad-switch)
+include(MunkeiVersionFromGit.cmake)
+version_from_git()
+
+project(tuxedo-touchpad-switch
+        VERSION ${VERSION}
+        DESCRIPTION "Hardware toggle for Tongfang/Uniwill i2c touchpads. This will toggle the touchpad-disabled-led.")
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(deps REQUIRED IMPORTED_TARGET gio-2.0 udev)
@@ -16,7 +38,5 @@ install(FILES res/tuxedo-touchpad-switch.desktop DESTINATION /etc/xdg/autostart/
 
 SET(CPACK_GENERATOR DEB)
 SET(CPACK_PACKAGE_CONTACT "Werner Sembach <tux@tuxedocomputers.com>")
-SET(CPACK_PACKAGE_VERSION 0.0.2)
-SET(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Hardware toggle for Tongfang/Uniwill i2c touchpads. This will toggle the touchpad-disabled-led.")
 SET(CPACK_DEBIAN_PACKAGE_SECTION admin)
 include(CPack)
