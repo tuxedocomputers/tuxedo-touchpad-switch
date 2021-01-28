@@ -38,5 +38,6 @@ install(FILES res/tuxedo-touchpad-switch.desktop DESTINATION /etc/xdg/autostart/
 
 SET(CPACK_GENERATOR DEB)
 SET(CPACK_PACKAGE_CONTACT "Werner Sembach <tux@tuxedocomputers.com>")
+SET(CPACK_PACKAGE_VERSION ${SEMVER})
 SET(CPACK_DEBIAN_PACKAGE_SECTION admin)
 include(CPack)
