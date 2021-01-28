@@ -18,7 +18,7 @@
 cmake_minimum_required(VERSION 3.6)
 
 include(MunkeiVersionFromGit.cmake)
-version_from_git()
+version_from_git(TIMESTAMP "%Y%m%d%H%M%S")
 
 project(tuxedo-touchpad-switch
         VERSION ${VERSION}
