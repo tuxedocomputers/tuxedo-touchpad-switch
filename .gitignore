@@ -19,6 +19,6 @@
 /debug/
 
 /.idea/
-/.cproject
 /.project
+/.cproject
 /*.kdev4
