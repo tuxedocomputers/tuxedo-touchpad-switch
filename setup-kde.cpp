@@ -31,6 +31,8 @@ using std::endl;
 int lockfile;
 gboolean isMousePluggedInPrev;
 gboolean isEnabledSave;
+GDBusProxy *kded5_modules_touchpad = NULL;
+GDBusProxy *solid_power_management = NULL;
 
 static void kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unused)) char *sender_name, char *signal_name, GVariant *parameters, __attribute__((unused)) gpointer user_data) {
     if (!strcmp("enabledChanged", signal_name) && g_variant_is_of_type(parameters, (const GVariantType *)"(b)") && g_variant_n_children(parameters)) {
@@ -53,7 +55,7 @@ static void kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unu
         GVariant *isMousePluggedInParam = g_dbus_proxy_call_sync(proxy, "isMousePluggedIn", NULL, G_DBUS_CALL_FLAGS_NONE, G_MAXINT, NULL, NULL);
         if (isMousePluggedInParam != NULL && g_variant_is_of_type(isMousePluggedInParam, (const GVariantType *)"(b)") && g_variant_n_children(isMousePluggedInParam)) {
             GVariant *isMousePluggedIn = g_variant_get_child_value(isMousePluggedInParam, 0);
-            if (!g_variant_get_boolean(isMousePluggedIn)) {
+            if (isMousePluggedInPrev && !g_variant_get_boolean(isMousePluggedIn)) {
                 if (set_touchpad_state(1)) {
                     cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
                 }
@@ -61,7 +63,7 @@ static void kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unu
                     cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
                 }
             }
-            else if (!isMousePluggedInPrev) {
+            else if (!isMousePluggedInPrev && g_variant_get_boolean(isMousePluggedIn)) {
                 if (flock(lockfile, LOCK_EX)) {
                     cerr << "kded5_modules_touchpad_handler(...): flock(...) failed." << endl;
                 }
@@ -198,4 +200,9 @@ int setup_kde(int lockfile_arg) {
     }
     
     return EXIT_SUCCESS;
+}
+
+void clean_kde() {
+    g_clear_object(&kded5_modules_touchpad);
+    g_clear_object(&solid_power_management);
 }

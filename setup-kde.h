@@ -18,3 +18,4 @@
 #pragma once
 
 int setup_kde(int lockfile);
+void clean_kde();

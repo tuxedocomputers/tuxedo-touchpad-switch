@@ -28,7 +28,10 @@
 using std::cerr;
 using std::endl;
 
-static int lockfile = -1;
+static int lockfile;
+static GSettings *touchpad_settings = NULL;
+static GDBusProxy *session_manager_properties = NULL;
+static GDBusProxy *display_config_properties = NULL;
 
 static void send_events_handler(GSettings *settings, const char* key, __attribute__((unused)) gpointer user_data) {
     const gchar *send_events_string = g_settings_get_string(settings, key);
@@ -90,7 +93,7 @@ int setup_gnome(int lockfile_arg) {
     lockfile = lockfile_arg;
     
     // get a new glib settings context to read the touchpad configuration of the current user
-    GSettings *touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
+    touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
     if (!touchpad_settings) {
         cerr << "main(...): g_settings_new(...) failed." << endl;
         return EXIT_FAILURE;
@@ -139,4 +142,10 @@ int setup_gnome(int lockfile_arg) {
     send_events_handler(touchpad_settings, "send-events", NULL);
     
     return EXIT_SUCCESS;
+}
+
+void clean_gnome() {
+    g_clear_object(&session_manager_properties);
+    g_clear_object(&display_config_properties);
+    g_clear_object(&touchpad_settings);
 }

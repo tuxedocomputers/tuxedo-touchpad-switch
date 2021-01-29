@@ -18,3 +18,4 @@
 #pragma once
 
 int setup_gnome(int lockfile);
+void clean_gnome();

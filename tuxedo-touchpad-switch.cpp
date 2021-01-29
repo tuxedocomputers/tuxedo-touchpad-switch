@@ -38,6 +38,10 @@ static int lockfile = -1;
 
 static void gracefull_exit(int signum = 0) {
     int result = EXIT_SUCCESS;
+    
+    clean_gnome();
+    clean_kde();
+    
     if (signum < 0) {
         result = EXIT_FAILURE;
     }
@@ -108,6 +112,7 @@ int main() {
     
     g_main_loop_run(app);
     // g_main_loop_run only returns on error
+    g_clear_object(&app);
     cerr << "main(...): g_main_loop_run(...) failed." << endl;
     gracefull_exit(-EXIT_FAILURE);
 }
