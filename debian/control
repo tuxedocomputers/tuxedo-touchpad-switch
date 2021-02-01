@@ -1,0 +1,17 @@
+Source: tuxedo-touchpad-switch
+Section: misc
+Priority: optional
+Maintainer: Werner Sembach <tux@tuxedocomputers.com>
+Build-Depends: debhelper (>= 12), libudev-dev (>= 245.4), libglib2.0-dev (>= 2.64.3)
+Standards-Version: 4.4.1
+Homepage: https://www.tuxedocomputers.com
+
+Package: tuxedo-touchpad-switch
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Toggles the touchpad and the attached disabled-LED on Uniwill/Tongfang laptops.
+ Provides a userspace driver that listens to config changes of the touchpad
+ enabled/disabled state in the xsession and sends appropriate commands to
+ /dev/hidraw* to appropiratly synchronize the hardware state. The LED on
+ Uniwill/Tongfang laptops touchpads is hardwired to that HID state, so this
+ package toggles this LED correctly.

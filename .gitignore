@@ -22,3 +22,12 @@
 /.project
 /.cproject
 /*.kdev4
+
+/obj-x86_64-linux-gnu/
+/debian/*
+!/debian/changelog
+!/debian/compat
+!/debian/control
+!/debian/copyright
+!/debian/rules
+!/debian/source/
