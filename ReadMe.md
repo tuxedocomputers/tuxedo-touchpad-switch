@@ -23,7 +23,7 @@ There is also a target `make package` which is fine for testing, but it will not
 
 ## Packaging
 ```
-$ sudo apt install libudev-dev libglib2.0-dev git-buildpackage
+$ sudo apt install libudev-dev libglib2.0-dev git-buildpackage debhelper
 $ gbp buildpackage -uc -us
 ```
 A .deb package is created in the folder above the git repository.
