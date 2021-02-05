@@ -1,26 +1,33 @@
-This a proof-of-concept Linux userspace driver to hardware-enable/-disable the touchpads on TongFang/Uniwill laptops. This will also trigger the disabled-led, formerly unfunctional under linux.
+# About
+This a Linux userspace driver to enable and disable the touchpads on TongFang/Uniwill laptops using a HID command. **This will trigger the touchpad-disabled-LED, formerly unfunctional under linux.**
 
-It syncs up with the software toggle in the gnome settings deamon.
+Most desktop environments already have a way to disable the touchpad, but this setting never reaches the firmware of the device. This driver listens to the session D-Bus and dispatches the approprita HID call to /dev/hidraw* whenever the setting changes, closing the gap to the device itself, and enabling the built in LED.
 
-It comes with some known disfuctionalities:
-- only works on desktop evnironments using gsettings/gio
-- does not work on loginscreen(gdm)
-- needs to be started for every user seperatly
-- every user needs write access to the /dev/hidraw* device for the touchpad (udev *.rules included)
-- switching between 2 users is not detected (on next toggle the software and hardware disable will be in sync again however)
+Currently this driver was only tested and works on the GDM greeter, GNOME Shell, Budgie, and KDE Plasmashell. All other environments, including the tty-console, work as before, meaning touchpad is always enabled on the HID level.
 
-Author: Werner Sembach
+Author: Werner Sembach <tux@tuxedocomputers.com>
 
-Raw i2c communication with the touchpad for reference:
-    
+# Building
+
+## Testing
 ```
-0x22 0x00 0x37 0x03 0x23 0x00 0x04 0x00 0x07 0x03
- [^^   ^^] (?max?) length of report? in little endian
-            ^ 2 bits reserved + report type
-             ^ report id (defined by touchpad controller?
-                 ^ reserved
-                  ^ opcode (0x2 = GET_REPORT, 0x3 = SET_REPORT)
-                     [^^   ^^   ^^   ^^   ^^] ?i2c-hid stuff?
-                                           ^ ?report id again?
-                                               ^^ report/payload: defined by touchpad controller? 0x03 enabled (0x02 auch, keine ahnung was das unterste bit tut), 0x00 disabled
+$ sudo apt install libudev-dev libglib2.0-dev
+$ mkdir build
+$ cd build
+$ cmake ..
+$ sudo make install
+$ sudo reboot
 ```
+
+There is also a target `make package` which is fine for testing, but it will not create a debian best practices compliant .deb. For this you need to use `gbp buildpackage` as described below.
+
+## Packaging
+```
+$ sudo apt install libudev-dev libglib2.0-dev git-buildpackage
+$ gbp buildpackage -uc -us
+```
+A .deb package is created in the folder above the git repository.
+
+# Installing
+
+After installing via `make install` or using the .deb you need to reboot your system for the driver to load.
