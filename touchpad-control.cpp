@@ -114,7 +114,8 @@ int set_touchpad_state(int enabled) {
         }
         else {
             // to enable touchpad send "0x03" as feature report nr.7 (0x07) to the touchpad hid device
-            // to disable it send "0x030"
+            // to disable it send "0x00"
+            // Reference: https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/touchpad-configuration-collection#selective-reporting-feature-report
             char buffer[2] = {0x07, 0x00};
             if (enabled) {
                 buffer[1] = 0x03;
