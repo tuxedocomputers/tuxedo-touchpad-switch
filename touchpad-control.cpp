@@ -113,8 +113,14 @@ int set_touchpad_state(int enabled) {
             result = EXIT_FAILURE;
         }
         else {
-            // to enable touchpad send "0x03" as feature report nr.7 (0x07) to the touchpad hid device
-            // to disable it send "0x030"
+            // The two rightmost bits control the touchpad status
+            // In order, they are:
+            // 1. LED on, touchpad off
+            // 2. clicks are off
+            // so, the options are:
+            // 0x00 LED on, touchpad off, touchpad click off
+            // 0x01 LED off, touchpad on, touchpad click off
+            // 0x03 LED off, touchpad on, touchpad click on
             char buffer[2] = {0x07, 0x00};
             if (enabled) {
                 buffer[1] = 0x03;
