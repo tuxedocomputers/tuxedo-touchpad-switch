@@ -40,9 +40,9 @@ static void send_events_handler(GSettings *settings, const char* key, __attribut
         return;
     }
     
-    int enabled = 0;
+    int enabled = TOUCHPAD_DISABLE;
     if (send_events_string[0] == 'e') {
-        enabled = 1;
+        enabled = TOUCHPAD_ENABLE;
     }
     
     if (set_touchpad_state(enabled)) {
@@ -64,7 +64,7 @@ static void  session_manager_properties_changed_handler(__attribute__((unused)) 
                 send_events_handler((GSettings *)user_data, "send-events", NULL);
             }
             else {
-                if (set_touchpad_state(1)) {
+                if (set_touchpad_state(TOUCHPAD_ENABLE)) {
                     cerr << "properties_changed_handler(...): set_touchpad_state(...) failed." << endl;
                 }
                 if (flock(lockfile, LOCK_UN)) {

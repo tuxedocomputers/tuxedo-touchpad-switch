@@ -40,12 +40,12 @@ static void kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unu
         
         isEnabledSave = g_variant_get_boolean(enabledChanged);
         if (isEnabledSave) {
-            if (set_touchpad_state(1)) {
+            if (set_touchpad_state(TOUCHPAD_ENABLE)) {
                 cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
             }
         }
         else {
-            if (set_touchpad_state(0)) {
+            if (set_touchpad_state(TOUCHPAD_DISABLE)) {
                 cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
             }
         }
@@ -56,7 +56,7 @@ static void kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unu
         if (isMousePluggedInParam != NULL && g_variant_is_of_type(isMousePluggedInParam, (const GVariantType *)"(b)") && g_variant_n_children(isMousePluggedInParam)) {
             GVariant *isMousePluggedIn = g_variant_get_child_value(isMousePluggedInParam, 0);
             if (isMousePluggedInPrev && !g_variant_get_boolean(isMousePluggedIn)) {
-                if (set_touchpad_state(1)) {
+                if (set_touchpad_state(TOUCHPAD_ENABLE)) {
                     cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
                 }
                 if (flock(lockfile, LOCK_UN)) {
@@ -83,7 +83,7 @@ static void kded5_modules_touchpad_handler(GDBusProxy *proxy, __attribute__((unu
 
 static void solid_power_management_handler(__attribute__((unused)) GDBusProxy *proxy, __attribute__((unused)) char *sender_name, char *signal_name, __attribute__((unused)) GVariant *parameters, __attribute__((unused)) gpointer user_data) {
     if (!strcmp("aboutToSuspend", signal_name)) {
-        if (set_touchpad_state(1)) {
+        if (set_touchpad_state(TOUCHPAD_ENABLE)) {
             cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
         }
         if (flock(lockfile, LOCK_UN)) {
@@ -108,13 +108,13 @@ static int kded5_modules_touchpad_init(GDBusProxy *proxy) {
         // init isEnabledSave
         isEnabledSave = g_variant_get_boolean(isEnabled);
         if (isEnabledSave) {
-            if (set_touchpad_state(1)) {
+            if (set_touchpad_state(TOUCHPAD_ENABLE)) {
                 cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
                 return EXIT_FAILURE;
             }
         }
         else {
-            if (set_touchpad_state(0)) {
+            if (set_touchpad_state(TOUCHPAD_DISABLE)) {
                 cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
                 return EXIT_FAILURE;
             }
@@ -137,7 +137,7 @@ static int kded5_modules_touchpad_init(GDBusProxy *proxy) {
         
         // isMousePluggedInPrev just got init so it holds the current value
         if (!isMousePluggedInPrev) {
-            if (set_touchpad_state(1)) {
+            if (set_touchpad_state(TOUCHPAD_ENABLE)) {
                 cerr << "kded5_modules_touchpad_handler(...): set_touchpad_state(...) failed." << endl;
                 return EXIT_FAILURE;
             }

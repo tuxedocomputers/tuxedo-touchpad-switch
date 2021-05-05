@@ -17,6 +17,11 @@
 
 #pragma once
 
+
+#define TOUCHPAD_DISABLE 0x00
+#define TOUCHPAD_TOUCH_DISABLE 0x02
+#define TOUCHPAD_ENABLE 0x03
+
 // "int enable" set to 0 disables the touchpad, any other value enables it
 // returns EXIT_SUCCESS or EXIT_FAILURE accordingly, on fail the activate/deactivate state of found touchpads is undefined
 int set_touchpad_state(int enabled);
