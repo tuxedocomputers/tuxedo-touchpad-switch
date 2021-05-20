@@ -113,9 +113,19 @@ int set_touchpad_state(int enabled) {
             result = EXIT_FAILURE;
         }
         else {
-            // to enable touchpad send "0x03" as feature report nr.7 (0x07) to the touchpad hid device
-            // to disable it send "0x00"
+            // To enable touchpad send "0x03" as feature report nr.7 (0x07) to the touchpad hid device.
+            // To disable it send "0x00".
             // Reference: https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/touchpad-configuration-collection#selective-reporting-feature-report
+            // Details:
+            // The two rightmost bits control the touchpad status
+            // In order, they are:
+            // 1. LED off + touchpad on/LED on + touchpad off
+            // 2. Clicks on/off
+            // So, the options are:
+            // 0x00 LED on, touchpad off, touchpad click off
+            // 0x01 LED on, touchpad off, touchpad click on
+            // 0x02 LED off, touchpad on, touchpad click off
+            // 0x03 LED off, touchpad on, touchpad click on
             char buffer[2] = {0x07, 0x00};
             if (enabled) {
                 buffer[1] = 0x03;
