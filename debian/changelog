@@ -1,3 +1,9 @@
+tuxedo-touchpad-switch (1.0.1) focal; urgency=medium
+
+  * Fix process not closing on logout
+
+ -- Werner Sembach <tux@tuxedocomputers.com>  Mon, 08 Feb 2021 12:01:42 +0100
+
 tuxedo-touchpad-switch (1.0.0) focal; urgency=medium
 
   * Update ReadMe.md

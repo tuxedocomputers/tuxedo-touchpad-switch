@@ -79,6 +79,10 @@ int main() {
         cerr << "main(...): sigaction(...) failed." << endl;
         gracefull_exit(-EXIT_FAILURE);
     }
+    if (sigaction(SIGHUP, &sigaction_gracefull_exit, nullptr)) {
+        cerr << "main(...): sigaction(...) failed." << endl;
+        gracefull_exit(-EXIT_FAILURE);
+    }
     
     lockfile = open("/etc/tuxedo-touchpad-switch-lockfile", O_RDONLY);
     if (lockfile == -1) {
