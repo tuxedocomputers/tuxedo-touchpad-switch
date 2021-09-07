@@ -16,3 +16,4 @@
 # along with TUXEDO Touchpad Switch.  If not, see <https://www.gnu.org/licenses/>.
 
 KERNELS=="i2c-UNIW0001:00", SUBSYSTEMS=="i2c", DRIVERS=="i2c_hid", ATTRS{name}=="UNIW0001:00", SUBSYSTEM=="hidraw", MODE="0622"
+KERNELS=="i2c-UNIW0001:00", SUBSYSTEMS=="i2c", DRIVERS=="i2c_hid_acpi", ATTRS{name}=="UNIW0001:00", SUBSYSTEM=="hidraw", MODE="0622"
