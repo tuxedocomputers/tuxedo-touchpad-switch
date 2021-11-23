@@ -1,3 +1,10 @@
+tuxedo-touchpad-switch (1.0.2) focal; urgency=medium
+
+  * Clarify code comments
+  * Fix udev rule for newer kernels
+
+ -- Werner Sembach <tux@tuxedocomputers.com>  Tue, 23 Nov 2021 18:53:33 +0100
+
 tuxedo-touchpad-switch (1.0.1) focal; urgency=medium
 
   * Fix process not closing on logout
