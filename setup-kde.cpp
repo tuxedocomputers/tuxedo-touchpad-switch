@@ -28,7 +28,7 @@
 using std::cerr;
 using std::endl;
 
-int lockfile;
+static int lockfile;
 gboolean isMousePluggedInPrev;
 gboolean isEnabledSave;
 GDBusProxy *kded5_modules_touchpad = NULL;

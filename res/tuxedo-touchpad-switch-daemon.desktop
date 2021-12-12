@@ -17,5 +17,5 @@
 
 [Desktop Entry]
 Name=TUXEDO Touchpad Switch
-Exec=tuxedo-touchpad-switch
+Exec=tuxedo-touchpad-switch-daemon
 Type=Application

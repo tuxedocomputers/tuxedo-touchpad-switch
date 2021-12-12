@@ -92,55 +92,108 @@ static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
     return result;
 }
 
-int set_touchpad_state(int enabled) {
+
+static int __get_set_touchpad_state(bool is_set, int state) {
+
     std::vector<std::string> devnodes;
     int touchpad_count = get_touchpad_hidraw_devices(&devnodes);
     if (touchpad_count < 0) {
         cerr << "send_events_handler(...): get_touchpad_hidraw_devices(...) failed." << endl;
-        return EXIT_FAILURE;
+        return -EXIT_FAILURE;
     }
     if (touchpad_count == 0) {
         cout << "No compatible touchpads found." << endl;
-        return EXIT_FAILURE;
+        return -EXIT_FAILURE;
     }
     
     int result = EXIT_SUCCESS;
+
+    
+    // To enable touchpad send "0x03" as feature report nr.7 (0x07) to the touchpad hid device.
+    // To disable it send "0x00".
+    // Reference: https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/touchpad-configuration-collection#selective-reporting-feature-report
+    // Details:
+    // The two rightmost bits control the touchpad status
+    // In order, they are:
+    // 1. LED off + touchpad on/LED on + touchpad off
+    // 2. Clicks on/off
+    // So, the options are:
+    // 0x00 LED on, touchpad off, touchpad click off
+    // 0x01 LED on, touchpad off, touchpad click on
+    // 0x02 LED off, touchpad on, touchpad click off
+    // 0x03 LED off, touchpad on, touchpad click on
+    char buffer[2] = {0x07, (char) state};
+    unsigned long request;
+    if (is_set) {
+        request = HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0]));
+    } 
+    else {
+        request = HIDIOCGFEATURE(sizeof(buffer)/sizeof(buffer[0]));
+    }
     
     for (auto it = devnodes.begin(); it != devnodes.end(); ++it) {
         int hidraw = open((*it).c_str(), O_WRONLY|O_NONBLOCK);
         if (hidraw < 0) {
-            cerr << "send_events_handler(...): open(\"" << *it << "\", O_WRONLY|O_NONBLOCK) failed." << endl;
-            result = EXIT_FAILURE;
+            cerr << "touchpad_state(" << is_set << ", ...): open(\"" << *it << "\", O_WRONLY|O_NONBLOCK) failed." << endl;
+            result = -EXIT_FAILURE;
         }
         else {
-            // To enable touchpad send "0x03" as feature report nr.7 (0x07) to the touchpad hid device.
-            // To disable it send "0x00".
-            // Reference: https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/touchpad-configuration-collection#selective-reporting-feature-report
-            // Details:
-            // The two rightmost bits control the touchpad status
-            // In order, they are:
-            // 1. LED off + touchpad on/LED on + touchpad off
-            // 2. Clicks on/off
-            // So, the options are:
-            // 0x00 LED on, touchpad off, touchpad click off
-            // 0x01 LED on, touchpad off, touchpad click on
-            // 0x02 LED off, touchpad on, touchpad click off
-            // 0x03 LED off, touchpad on, touchpad click on
-            char buffer[2] = {0x07, 0x00};
-            if (enabled) {
-                buffer[1] = 0x03;
-            }
             
-            int result = ioctl(hidraw, HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0])), buffer);
+            int result = ioctl(hidraw, request, buffer);
             if (result < 0) {
-                cerr << "send_events_handler(...): ioctl(...) on " << *it << " failed." << endl;
-                result = EXIT_FAILURE;
+                cerr << "touchpad_state(" << is_set << ", ...): ioctl(...) on " << *it << " failed." << endl;
+                result = -EXIT_FAILURE;
             }
-            // else {}
-            
-            close(hidraw);
+            if (is_set || result < 0) {
+                close(hidraw);
+            }
+            else {
+                close(hidraw);
+                return buffer[1];
+            }
         }
     }
     
     return result;
+
+}
+
+int get_touchpad_state() {
+    return __get_set_touchpad_state(false, 0);
+}
+
+int set_touchpad_state(int state) {
+
+    switch(state) {
+        case TOUCHPAD_DISABLE:
+        case TOUCHPAD_TOUCH_DISABLE:
+        case 0x02:
+        case TOUCHPAD_ENABLE:
+        break;
+
+        default:
+        cout << "Disallowed state was given. Must be 0,1,2 or 3, '" << state << "' given." << endl;
+        return -EXIT_FAILURE;
+    }
+
+    return __get_set_touchpad_state(true, state);
+    
+}
+
+
+int toggle_touchpad_state() {
+
+    int current_state = get_touchpad_state();
+    if(current_state < 0){
+        return current_state;
+    }
+
+    int new_state = current_state == TOUCHPAD_DISABLE ? TOUCHPAD_ENABLE : TOUCHPAD_DISABLE;
+
+    if(set_touchpad_state(new_state)){
+        return -EXIT_FAILURE;
+    }
+
+    return new_state;
+
 }

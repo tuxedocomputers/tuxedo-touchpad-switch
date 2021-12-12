@@ -17,12 +17,32 @@
 
 #pragma once
 
-#define TOUCHPAD_DISABLE 0x00
-#define TOUCHPAD_TOUCH_DISABLE 0x01
-#define TOUCHPAD_ENABLE 0x03
 
-// "int enable" set to 0 disables the touchpad, any other value enables it
-// returns EXIT_SUCCESS or EXIT_FAILURE accordingly, on fail the activate/deactivate state of found touchpads is undefined
-int set_touchpad_state(int state);
-int get_touchpad_state();
-int toggle_touchpad_state();
+#include <iostream>
+
+#include <argp.h>
+
+#include <cstdlib>
+#include <csignal>
+
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/file.h>
+
+#include <gio/gio.h>
+
+#include "touchpad-control.h"
+
+using std::cout;
+using std::cerr;
+using std::endl;
+
+
+void common_gracefull_exit(int signum);
+
+void common_startup(int &lockfile_arg, bool daemon_mode_arg);
+
+
+// To be defined in both tuxedo-touchpad-switch[-cli|-daemon].cpp
+// User will run either but both don't and must not include one another
+void gracefull_exit(int signum = 0);

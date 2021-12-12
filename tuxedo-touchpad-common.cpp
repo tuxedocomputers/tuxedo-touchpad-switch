@@ -17,6 +17,8 @@
 
 #include <iostream>
 
+#include <argp.h>
+
 #include <cstdlib>
 #include <csignal>
 
@@ -26,6 +28,7 @@
 
 #include <gio/gio.h>
 
+#include "tuxedo-touchpad-common.h"
 #include "touchpad-control.h"
 #include "setup-gnome.h"
 #include "setup-kde.h"
@@ -34,19 +37,19 @@ using std::cout;
 using std::cerr;
 using std::endl;
 
-static int lockfile = -1;
 
-static void gracefull_exit(int signum = 0) {
+static int lockfile = -1;
+static bool daemon_mode = true;
+
+void common_gracefull_exit(int signum = 0) {
     int result = EXIT_SUCCESS;
     
-    clean_gnome();
-    clean_kde();
     
     if (signum < 0) {
         result = EXIT_FAILURE;
     }
     
-    if (set_touchpad_state(1) != EXIT_SUCCESS) {
+    if (daemon_mode && set_touchpad_state(TOUCHPAD_ENABLE) != EXIT_SUCCESS) {
         cerr << "gracefull_exit(...): set_touchpad_state(...) failed." << endl;
         result = EXIT_FAILURE;
     }
@@ -65,7 +68,11 @@ static void gracefull_exit(int signum = 0) {
     exit(result);
 }
 
-int main() {
+
+void common_startup(int &lockfile_arg, bool daemon_mode_arg){
+
+    daemon_mode = daemon_mode_arg;
+
     struct sigaction sigaction_gracefull_exit;
     sigaction_gracefull_exit.sa_handler = gracefull_exit;
     sigemptyset(&sigaction_gracefull_exit.sa_mask);
@@ -84,39 +91,40 @@ int main() {
         gracefull_exit(-EXIT_FAILURE);
     }
     
-    lockfile = open("/etc/tuxedo-touchpad-switch-lockfile", O_RDONLY);
+    lockfile = open("/etc/tuxedo-touchpad-switch-lockfile", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (lockfile == -1) {
-        cerr << "main(...): open(...) failed." << endl;
+        perror("main(...): open(...) failed");
         gracefull_exit(-EXIT_FAILURE);
     }
+    lockfile_arg = lockfile;   
     
-    if (flock(lockfile, LOCK_EX) == -1) {
-        cerr << "main(...): flock(...) failed." << endl;
+    if (flock(lockfile, LOCK_EX | LOCK_NB) == -1) {
+        switch(errno){
+            case EWOULDBLOCK:
+                char pid_s[12] = {0};
+                cerr << "tuxedo-touchpad-switch is already running (possibly as a daemon) with ";
+                if(read(lockfile, pid_s, (sizeof(pid_s) - 2) * sizeof(char) > 0 )) {
+                    cerr << "pid " << pid_s << endl;
+                } else {
+                    cerr << "unknown pid " << endl;
+                }
+                
+                gracefull_exit(-EXIT_FAILURE);
+        }
+        perror("main(...): flock(...) failed");
         gracefull_exit(-EXIT_FAILURE);
     }
-    
-    char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
-    if (strstr(xdg_current_desktop, "GNOME")) {
-        setup_gnome(lockfile);
-    }
-    else if (strstr(xdg_current_desktop, "KDE")) {
-        setup_kde(lockfile);
-    }
-    else {
-        cout << "Your desktop environment is not supported." << endl;
-        gracefull_exit(SIGTERM);
-    }
-    
-    // start empty glib mainloop, required for glib signals to be catched
-    GMainLoop *app = g_main_loop_new(NULL, TRUE);
-    if (!app) {
-        cerr << "main(...): g_main_loop_new(...) failed." << endl;
+
+    if (ftruncate(lockfile, 0) < 0){
+        perror("main(...): lseek(...) failed");
         gracefull_exit(-EXIT_FAILURE);
     }
-    
-    g_main_loop_run(app);
-    // g_main_loop_run only returns on error
-    g_clear_object(&app);
-    cerr << "main(...): g_main_loop_run(...) failed." << endl;
-    gracefull_exit(-EXIT_FAILURE);
+
+    char pidbuffer[10];
+    int written_size = snprintf(pidbuffer, sizeof(pidbuffer), "%d", getpid());
+
+    if (write (lockfile, pidbuffer, written_size) < 0){
+        perror("main(...): write(...) failed. Continuing anyway");
+    }
+
 }
