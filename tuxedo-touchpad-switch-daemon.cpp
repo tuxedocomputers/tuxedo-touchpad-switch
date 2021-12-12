@@ -36,6 +36,12 @@ int main(int argc, char** argv) {
     common_startup(lockfile, true);
     
     char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
+
+    if (!xdg_current_desktop){
+        cerr << "FATAL: XDG_CURRENT_DESKTOP environment variable is not defined" << endl
+             << "XDG_CURRENT_DESKTOP is required to run in daemon mode." << endl;
+        gracefull_exit(SIGTERM);
+    }
     if (strstr(xdg_current_desktop, "GNOME")) {
         setup_gnome(lockfile);
     }
