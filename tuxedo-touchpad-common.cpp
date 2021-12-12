@@ -91,7 +91,7 @@ void common_startup(int &lockfile_arg, bool daemon_mode_arg){
         gracefull_exit(-EXIT_FAILURE);
     }
     
-    lockfile = open("/etc/tuxedo-touchpad-switch-lockfile", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+    lockfile = open(PID_FILE_PATH, O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (lockfile == -1) {
         perror("main(...): open(...) failed");
         gracefull_exit(-EXIT_FAILURE);

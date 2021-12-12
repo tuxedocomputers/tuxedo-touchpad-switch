@@ -18,6 +18,8 @@
 #pragma once
 
 
+#define PID_FILE_PATH "/run/tuxedo-touchpad-switch-lockfile.pid"
+
 #include <iostream>
 
 #include <argp.h>
