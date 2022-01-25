@@ -96,7 +96,11 @@ int main() {
     }
     
     char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
-    if (strstr(xdg_current_desktop, "GNOME")) {
+    if (!xdg_current_desktop) {
+        cout << "Your desktop environment could not be determined. Maybe running as root?" << endl;
+        gracefull_exit(SIGTERM);
+    }
+    else if (strstr(xdg_current_desktop, "GNOME")) {
         setup_gnome(lockfile);
     }
     else if (strstr(xdg_current_desktop, "KDE")) {
