@@ -97,7 +97,7 @@ int main() {
     
     char *xdg_current_desktop = getenv("XDG_CURRENT_DESKTOP");
     if (!xdg_current_desktop) {
-        cout << "Your desktop environment could not be determined. Maybe running as root?" << endl;
+        cout << "Your desktop environment could not be determined." << endl;
         gracefull_exit(SIGTERM);
     }
     else if (strstr(xdg_current_desktop, "GNOME")) {
