@@ -1,3 +1,9 @@
+tuxedo-touchpad-switch (1.0.3) focal; urgency=medium
+
+  * Segfault happens if environment variable XDG_CURRENT_DESKTOP is not set
+
+ -- Werner Sembach <tux@tuxedocomputers.com>  Tue, 25 Jan 2022 17:36:50 +0100
+
 tuxedo-touchpad-switch (1.0.2) focal; urgency=medium
 
   * Clarify code comments
