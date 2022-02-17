@@ -160,12 +160,55 @@ static int kded5_modules_touchpad_init(GDBusProxy *proxy) {
 
 int setup_kde(int lockfile_arg) {
     lockfile = lockfile_arg;
-    
+    const char *object_path = NULL;
+
+    GDBusProxy *kded5 = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+                                                      G_DBUS_PROXY_FLAGS_NONE, NULL,
+                                                      "org.kde.kded5",
+                                                      "/kded",
+                                                      "org.kde.kded5",
+                                                      NULL, NULL);
+    if (kded5 == NULL) {
+        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        return EXIT_FAILURE;
+    }
+    GVariant *loadedModulesParam = g_dbus_proxy_call_sync(kded5, "loadedModules", NULL, G_DBUS_CALL_FLAGS_NONE, G_MAXINT, NULL, NULL);
+    if (loadedModulesParam != NULL && g_variant_is_of_type(loadedModulesParam, (const GVariantType *)"(as)") && g_variant_n_children(loadedModulesParam) ) {
+        GVariant *loadedModules = g_variant_get_child_value(loadedModulesParam, 0);
+        GVariantIter *iter;
+        gchar *str;
+
+        g_variant_get(loadedModules, "as", &iter);
+        while (g_variant_iter_loop(iter, "s", &str)) {
+            if (strcmp(str, "kded_touchpad") == 0) {
+                object_path = "/modules/kded_touchpad";
+                break; // break is fine here, we dont need to free unpacked strings
+            }
+            if (strcmp(str, "touchpad") == 0) {
+                object_path = "/modules/touchpad";
+                break; // break is fine here, we dont need to free unpacked strings
+            }
+        }
+
+        g_variant_iter_free(iter);
+        g_variant_unref(loadedModules);
+        g_variant_unref(loadedModulesParam);
+    } else {
+        g_object_unref(kded5); // not needed anymore
+        cerr << "main(...): g_dbus_proxy_call_sync(...) failed." << endl;
+        return EXIT_FAILURE;
+    }
+    g_object_unref(kded5); // not needed anymore
+    if (object_path == NULL) {
+        cerr << "main(...): Could not find touchpad module in kded. Is it disabled?" << endl;
+        return EXIT_FAILURE;
+    }
+
     // sync on config and xsession change
     GDBusProxy *kded5_modules_touchpad = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                                                        G_DBUS_PROXY_FLAGS_NONE, NULL,
                                                                        "org.kde.kded5",
-                                                                       "/modules/touchpad",
+                                                                       object_path,
                                                                        "org.kde.touchpad",
                                                                        NULL, NULL);
     if (kded5_modules_touchpad == NULL) {
