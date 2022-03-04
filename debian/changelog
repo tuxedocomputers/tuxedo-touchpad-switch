@@ -1,3 +1,17 @@
+tuxedo-touchpad-switch (1.0.4) focal; urgency=medium
+
+  [ brainpower ]
+  * autodetect correct kded touchpad module
+
+  [ Werner Sembach ]
+  * Add gracefull exit on previously unhandled error cases
+  * Clarify error messages
+  * Fix uncritical memory leak on exit
+  * Remove assuming error message
+  * Fix memory leak
+
+ -- Werner Sembach <wsembach@wsembach-tuxedo>  Fri, 04 Mar 2022 16:16:34 +0100
+
 tuxedo-touchpad-switch (1.0.3) focal; urgency=medium
 
   * Segfault happens if environment variable XDG_CURRENT_DESKTOP is not set
