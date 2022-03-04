@@ -101,10 +101,18 @@ int main() {
         gracefull_exit(SIGTERM);
     }
     else if (strstr(xdg_current_desktop, "GNOME")) {
-        setup_gnome(lockfile);
+        int ret = setup_gnome(lockfile);
+        if (ret != EXIT_SUCCESS) {
+            cerr << "main(...): setup_gnome(...) failed." << endl;
+            gracefull_exit(-ret);
+        }
     }
     else if (strstr(xdg_current_desktop, "KDE")) {
-        setup_kde(lockfile);
+        int ret = setup_kde(lockfile);
+        if (ret != EXIT_SUCCESS) {
+            cerr << "main(...): setup_kde(...) failed." << endl;
+            gracefull_exit(-ret);
+        }
     }
     else {
         cout << "Your desktop environment is not supported." << endl;
