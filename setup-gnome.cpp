@@ -106,7 +106,7 @@ int setup_gnome(int lockfile_arg) {
     }
     
     // sync on xsession change
-    GDBusProxy *session_manager_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+    session_manager_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                                                            G_DBUS_PROXY_FLAGS_NONE, NULL,
                                                                            "org.gnome.SessionManager",
                                                                            "/org/gnome/SessionManager",
@@ -122,7 +122,7 @@ int setup_gnome(int lockfile_arg) {
     }
     
     // sync on wakeup
-    GDBusProxy *display_config_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+    display_config_properties = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                                                           G_DBUS_PROXY_FLAGS_NONE, NULL,
                                                                           "org.gnome.Mutter.DisplayConfig",
                                                                           "/org/gnome/Mutter/DisplayConfig",

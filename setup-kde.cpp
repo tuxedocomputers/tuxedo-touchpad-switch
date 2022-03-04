@@ -205,7 +205,7 @@ int setup_kde(int lockfile_arg) {
     }
 
     // sync on config and xsession change
-    GDBusProxy *kded5_modules_touchpad = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+    kded5_modules_touchpad = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                                                        G_DBUS_PROXY_FLAGS_NONE, NULL,
                                                                        "org.kde.kded5",
                                                                        object_path,
@@ -221,7 +221,7 @@ int setup_kde(int lockfile_arg) {
     }
     
     // sync on wakeup
-    GDBusProxy *solid_power_management = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+    solid_power_management = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
                                                                        G_DBUS_PROXY_FLAGS_NONE, NULL,
                                                                        "org.kde.Solid.PowerManagement",
                                                                        "/org/kde/Solid/PowerManagement/Actions/SuspendSession",
