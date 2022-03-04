@@ -182,11 +182,13 @@ int setup_kde(int lockfile_arg) {
         while (g_variant_iter_loop(iter, "s", &str)) {
             if (strcmp(str, "kded_touchpad") == 0) {
                 object_path = "/modules/kded_touchpad";
-                break; // break is fine here, we dont need to free unpacked strings
+                g_free(str); // g_variant_iter_loop needs freeing when break is used
+                break;
             }
             if (strcmp(str, "touchpad") == 0) {
                 object_path = "/modules/touchpad";
-                break; // break is fine here, we dont need to free unpacked strings
+                g_free(str); // g_variant_iter_loop needs freeing when break is used
+                break;
             }
         }
 
