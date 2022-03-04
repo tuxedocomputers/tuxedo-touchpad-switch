@@ -200,7 +200,7 @@ int setup_kde(int lockfile_arg) {
     }
     g_object_unref(kded5); // not needed anymore
     if (object_path == NULL) {
-        cerr << "setup_kde(...): Could not find touchpad module in kded. Is it disabled?" << endl;
+        cerr << "setup_kde(...): Could not find touchpad module in kded." << endl;
         return EXIT_FAILURE;
     }
 
