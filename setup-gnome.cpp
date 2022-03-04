@@ -95,13 +95,13 @@ int setup_gnome(int lockfile_arg) {
     // get a new glib settings context to read the touchpad configuration of the current user
     touchpad_settings = g_settings_new("org.gnome.desktop.peripherals.touchpad");
     if (!touchpad_settings) {
-        cerr << "main(...): g_settings_new(...) failed." << endl;
+        cerr << "setup_gnome(...): g_settings_new(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
     // sync on config change
     if (g_signal_connect(touchpad_settings, "changed::send-events", G_CALLBACK(send_events_handler), NULL) < 1) {
-        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        cerr << "setup_gnome(...): g_signal_connect(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
@@ -113,11 +113,11 @@ int setup_gnome(int lockfile_arg) {
                                                                            "org.gnome.SessionManager",
                                                                            NULL, NULL);
     if (session_manager_properties == NULL) {
-        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        cerr << "setup_gnome(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
         return EXIT_FAILURE;
     }
     if (g_signal_connect(session_manager_properties, "g-properties-changed", G_CALLBACK(session_manager_properties_changed_handler), touchpad_settings) < 1) {
-        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        cerr << "setup_gnome(...): g_signal_connect(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
@@ -129,11 +129,11 @@ int setup_gnome(int lockfile_arg) {
                                                                           "org.gnome.Mutter.DisplayConfig",
                                                                           NULL, NULL);
     if (display_config_properties == NULL) {
-        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        cerr << "setup_gnome(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
         return EXIT_FAILURE;
     }
     if (g_signal_connect(display_config_properties, "g-properties-changed", G_CALLBACK(display_config_properties_changed_handler), touchpad_settings) < 1) {
-        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        cerr << "setup_gnome(...): g_signal_connect(...) failed." << endl;
         return EXIT_FAILURE;
     }
     

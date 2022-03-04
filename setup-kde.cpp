@@ -169,7 +169,7 @@ int setup_kde(int lockfile_arg) {
                                                       "org.kde.kded5",
                                                       NULL, NULL);
     if (kded5 == NULL) {
-        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        cerr << "setup_kde(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
         return EXIT_FAILURE;
     }
     GVariant *loadedModulesParam = g_dbus_proxy_call_sync(kded5, "loadedModules", NULL, G_DBUS_CALL_FLAGS_NONE, G_MAXINT, NULL, NULL);
@@ -195,12 +195,12 @@ int setup_kde(int lockfile_arg) {
         g_variant_unref(loadedModulesParam);
     } else {
         g_object_unref(kded5); // not needed anymore
-        cerr << "main(...): g_dbus_proxy_call_sync(...) failed." << endl;
+        cerr << "setup_kde(...): g_dbus_proxy_call_sync(...) failed." << endl;
         return EXIT_FAILURE;
     }
     g_object_unref(kded5); // not needed anymore
     if (object_path == NULL) {
-        cerr << "main(...): Could not find touchpad module in kded. Is it disabled?" << endl;
+        cerr << "setup_kde(...): Could not find touchpad module in kded. Is it disabled?" << endl;
         return EXIT_FAILURE;
     }
 
@@ -212,11 +212,11 @@ int setup_kde(int lockfile_arg) {
                                                                        "org.kde.touchpad",
                                                                        NULL, NULL);
     if (kded5_modules_touchpad == NULL) {
-        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        cerr << "setup_kde(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
         return EXIT_FAILURE;
     }
     if (g_signal_connect(kded5_modules_touchpad, "g-signal", G_CALLBACK(kded5_modules_touchpad_handler), NULL) < 1) {
-        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        cerr << "setup_kde(...): g_signal_connect(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
@@ -228,17 +228,17 @@ int setup_kde(int lockfile_arg) {
                                                                        "org.kde.Solid.PowerManagement.Actions.SuspendSession",
                                                                        NULL, NULL);
     if (solid_power_management == NULL) {
-        cerr << "main(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
+        cerr << "setup_kde(...): g_dbus_proxy_new_for_bus_sync(...) failed." << endl;
         return EXIT_FAILURE;
     }
     if (g_signal_connect(solid_power_management, "g-signal", G_CALLBACK(solid_power_management_handler), NULL) < 1) {
-        cerr << "main(...): g_signal_connect(...) failed." << endl;
+        cerr << "setup_kde(...): g_signal_connect(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
     // sync on start
     if (kded5_modules_touchpad_init(kded5_modules_touchpad) == EXIT_FAILURE) {
-        cerr << "main(...): kded5_modules_touchpad_init(...) failed." << endl;
+        cerr << "setup_kde(...): kded5_modules_touchpad_init(...) failed." << endl;
         return EXIT_FAILURE;
     }
     
