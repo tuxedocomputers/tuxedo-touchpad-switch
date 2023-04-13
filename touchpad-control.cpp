@@ -131,7 +131,7 @@ int set_touchpad_state(int enabled) {
                 buffer[1] = 0x03;
             }
             
-            int result = ioctl(hidraw, HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0])), buffer);
+            result = ioctl(hidraw, HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0])), buffer);
             if (result < 0) {
                 cerr << "send_events_handler(...): ioctl(...) on " << *it << " failed." << endl;
                 result = EXIT_FAILURE;
