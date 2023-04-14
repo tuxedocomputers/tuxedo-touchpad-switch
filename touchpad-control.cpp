@@ -20,6 +20,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <algorithm>
+#include <iomanip>
 
 #include <cstring>
 
@@ -92,6 +94,46 @@ static int get_touchpad_hidraw_devices(std::vector<std::string> *devnodes) {
     return result;
 }
 
+static int get_hidraw_surface_button_switch_report_id(std::string devnode) {
+    int result = 0;
+
+    int hidraw = open(devnode.c_str(), O_WRONLY|O_NONBLOCK);
+    if (hidraw < 0) {
+        cerr << "get_hidraw_surface_button_switch_report_id(...): open(\"" << devnode << "\", O_WRONLY|O_NONBLOCK) failed." << endl;
+        return -EXIT_FAILURE;
+    }
+    else {
+        struct hidraw_report_descriptor report_descriptor;
+
+        result = ioctl(hidraw, HIDIOCGRDESCSIZE, &report_descriptor.size);
+        if (result < 0) {
+            cerr << "get_hidraw_surface_button_switch_report_id(...): ioctl(..., HIDIOCGRDESCSIZE, ...) on " << devnode << " failed." << endl;
+            close(hidraw);
+            return -EXIT_FAILURE;
+        }
+
+        result = ioctl(hidraw, HIDIOCGRDESC, &report_descriptor);
+        if (result < 0) {
+            cerr << "get_hidraw_surface_button_switch_report_id(...): ioctl(..., HIDIOCGRDESC, ...) on " << devnode << " failed." << endl;
+            close(hidraw);
+            return -EXIT_FAILURE;
+        }
+
+        close(hidraw);
+
+        __u8 surface_button_switch_collection_identifier[] = {0x05, 0x0d, 0x09, 0x22, 0xa1, 0x00, 0x09, 0x57, 0x09, 0x58};
+        auto it1 = std::search(std::begin(report_descriptor.value), std::end(report_descriptor.value), std::begin(surface_button_switch_collection_identifier), std::end(surface_button_switch_collection_identifier));
+        for (auto it2 = it1; it2 != std::end(report_descriptor.value); ++it2) {
+            cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(*it2) << std::dec << std::setw(0) << std::setfill(' ') << " ";
+            if (*it2 == 0x85 && std::next(it2) != std::end(report_descriptor.value)) {
+                return *(std::next(it2));
+            }
+        }
+    }
+
+    return -EXIT_FAILURE;
+}
+
 int set_touchpad_state(int enabled) {
     std::vector<std::string> devnodes;
     int touchpad_count = get_touchpad_hidraw_devices(&devnodes);
@@ -107,38 +149,46 @@ int set_touchpad_state(int enabled) {
     int result = EXIT_SUCCESS;
     
     for (auto it = devnodes.begin(); it != devnodes.end(); ++it) {
-        int hidraw = open((*it).c_str(), O_WRONLY|O_NONBLOCK);
-        if (hidraw < 0) {
-            cerr << "send_events_handler(...): open(\"" << *it << "\", O_WRONLY|O_NONBLOCK) failed." << endl;
+        int feature_report_id = get_hidraw_surface_button_switch_report_id(*it);
+        if (feature_report_id < 0) {
+            cerr << "set_touchpad_state(...): get_hidraw_surface_button_switch_report_id(...) failed." << endl;
             result = EXIT_FAILURE;
         }
         else {
-            // To enable touchpad send "0x03" as feature report nr.7 (0x07) to the touchpad hid device.
-            // To disable it send "0x00".
-            // Reference: https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/touchpad-configuration-collection#selective-reporting-feature-report
-            // Details:
-            // The two rightmost bits control the touchpad status
-            // In order, they are:
-            // 1. LED off + touchpad on/LED on + touchpad off
-            // 2. Clicks on/off
-            // So, the options are:
-            // 0x00 LED on, touchpad off, touchpad click off
-            // 0x01 LED on, touchpad off, touchpad click on
-            // 0x02 LED off, touchpad on, touchpad click off
-            // 0x03 LED off, touchpad on, touchpad click on
-            char buffer[2] = {0x07, 0x00};
-            if (enabled) {
-                buffer[1] = 0x03;
-            }
-            
-            result = ioctl(hidraw, HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0])), buffer);
-            if (result < 0) {
-                cerr << "send_events_handler(...): ioctl(...) on " << *it << " failed." << endl;
+            int hidraw = open((*it).c_str(), O_WRONLY|O_NONBLOCK);
+            if (hidraw < 0) {
+                cerr << "set_touchpad_state(...): open(\"" << *it << "\", O_WRONLY|O_NONBLOCK) failed." << endl;
                 result = EXIT_FAILURE;
             }
-            // else {}
-            
-            close(hidraw);
+            else {
+                // To enable touchpad send "0x03" as feature report to the touchpad hid device. The feature report number can be gathered from the report descriptors.
+                // To disable it send "0x00".
+                // Reference: https://docs.microsoft.com/en-us/windows-hardware/design/component-guidelines/touchpad-configuration-collection#selective-reporting-feature-report
+                // Details:
+                // The two rightmost bits control the touchpad status
+                // In order, they are:
+                // 1. LED off + touchpad on/LED on + touchpad off
+                // 2. Clicks on/off
+                // So, the options are:
+                // 0x00 LED on, touchpad off, touchpad click off
+                // 0x01 LED on, touchpad off, touchpad click on
+                // 0x02 LED off, touchpad on, touchpad click off
+                // 0x03 LED off, touchpad on, touchpad click on
+                char buffer[2] = {static_cast<char>(feature_report_id), 0x00};
+                if (enabled) {
+                    buffer[1] = 0x03;
+                }
+
+                result = ioctl(hidraw, HIDIOCSFEATURE(sizeof(buffer)/sizeof(buffer[0])), buffer);
+                if (result < 0) {
+                    cerr << "set_touchpad_state(...): ioctl(...) on " << *it << " failed." << endl;
+                    result = EXIT_FAILURE;
+                }
+
+                close(hidraw);
+
+                result = EXIT_SUCCESS;
+            }
         }
     }
     
