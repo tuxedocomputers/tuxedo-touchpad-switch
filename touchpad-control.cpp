@@ -124,7 +124,6 @@ static int get_hidraw_surface_button_switch_report_id(std::string devnode) {
         __u8 surface_button_switch_collection_identifier[] = {0x05, 0x0d, 0x09, 0x22, 0xa1, 0x00, 0x09, 0x57, 0x09, 0x58};
         auto it1 = std::search(std::begin(report_descriptor.value), std::end(report_descriptor.value), std::begin(surface_button_switch_collection_identifier), std::end(surface_button_switch_collection_identifier));
         for (auto it2 = it1; it2 != std::end(report_descriptor.value); ++it2) {
-            cout << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(*it2) << std::dec << std::setw(0) << std::setfill(' ') << " ";
             if (*it2 == 0x85 && std::next(it2) != std::end(report_descriptor.value)) {
                 return *(std::next(it2));
             }
