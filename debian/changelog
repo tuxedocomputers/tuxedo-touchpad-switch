@@ -1,3 +1,10 @@
+tuxedo-touchpad-switch (1.0.6) jammy; urgency=medium
+
+  [ Werner Sembach ]
+  * Remove leftover debug output
+
+ -- Tuxedo BOT <tux@tuxedocomputers.com>  Fri, 14 Apr 2023 16:15:48 +0200
+
 tuxedo-touchpad-switch (1.0.5) jammy; urgency=medium
 
   [ Werner Sembach ]
