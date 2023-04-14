@@ -2,7 +2,7 @@ Source: tuxedo-touchpad-switch
 Section: misc
 Priority: optional
 Maintainer: Werner Sembach <tux@tuxedocomputers.com>
-Build-Depends: debhelper (>= 12), libudev-dev (>= 245.4), libglib2.0-dev (>= 2.64.3)
+Build-Depends: debhelper (>= 12), libudev-dev (>= 245.4), libglib2.0-dev (>= 2.64.3), cmake (>= 3.6)
 Standards-Version: 4.4.1
 Homepage: https://www.tuxedocomputers.com
 
