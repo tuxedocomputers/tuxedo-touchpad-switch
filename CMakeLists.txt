@@ -17,12 +17,7 @@
 
 cmake_minimum_required(VERSION 3.6)
 
-include(MunkeiVersionFromGit.cmake)
-version_from_git(TIMESTAMP "%Y%m%d%H%M%S")
-
-project(tuxedo-touchpad-switch
-        VERSION ${VERSION}
-        DESCRIPTION "Hardware toggle for Tongfang/Uniwill i2c touchpads. This will toggle the touchpad-disabled-led.")
+project(tuxedo-touchpad-switch)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(deps REQUIRED IMPORTED_TARGET gio-2.0 udev)
@@ -35,10 +30,3 @@ install(FILES res/99-tuxedo-touchpad-switch.rules DESTINATION lib/udev/rules.d/)
 install(FILES res/tuxedo-touchpad-switch-lockfile DESTINATION /etc/ PERMISSIONS OWNER_READ GROUP_READ WORLD_READ) # absolute path on purpose: implemented as such in tuxedo-touchpad-switch.cpp
 install(FILES res/tuxedo-touchpad-switch.desktop DESTINATION /usr/share/gdm/greeter/autostart/) # absolute path on purpose: gdm has no config dir in /usr/local/
 install(FILES res/tuxedo-touchpad-switch.desktop DESTINATION /etc/xdg/autostart/) # absolute path on purpose: $XDG_CONFIG_DIRS does not include a folder under /usr/ by default https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html#variables
-
-SET(CPACK_GENERATOR DEB)
-SET(CPACK_PACKAGE_CONTACT "Werner Sembach <tux@tuxedocomputers.com>")
-SET(CPACK_PACKAGE_VERSION ${SEMVER})
-SET(CPACK_DEBIAN_PACKAGE_SECTION admin)
-SET(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-include(CPack)

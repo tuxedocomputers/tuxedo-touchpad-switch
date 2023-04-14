@@ -19,8 +19,6 @@ $ sudo make install
 $ sudo reboot
 ```
 
-There is also a target `make package` which is fine for testing, but it will not create a debian best practices compliant .deb. For this you need to use `gbp buildpackage` as described below.
-
 ## Packaging
 ```
 $ sudo apt install libudev-dev libglib2.0-dev git-buildpackage debhelper
