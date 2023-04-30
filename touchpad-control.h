@@ -20,3 +20,5 @@
 // "int enable" set to 0 disables the touchpad, any other value enables it
 // returns EXIT_SUCCESS or EXIT_FAILURE accordingly, on fail the activate/deactivate state of found touchpads is undefined
 int set_touchpad_state(int enabled);
+
+int toggle_touchpad_state();

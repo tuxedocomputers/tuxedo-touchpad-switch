@@ -193,3 +193,48 @@ int set_touchpad_state(int enabled) {
     
     return result;
 }
+
+int toggle_touchpad_state() {
+    std::vector<std::string> devnodes;
+    int touchpad_count = get_touchpad_hidraw_devices(&devnodes);
+    if (touchpad_count < 0) {
+        cerr << "get_touchpad_hidraw_devices failed." << endl;
+        return EXIT_FAILURE;
+    }
+    if (touchpad_count == 0) {
+        cout << "No compatible touchpads found." << endl;
+        return EXIT_FAILURE;
+    }
+
+    int result = EXIT_SUCCESS;
+
+    for (auto it = devnodes.begin(); it != devnodes.end(); ++it) {
+        int hidraw = open((*it).c_str(), O_WRONLY|O_NONBLOCK);
+        if (hidraw < 0) {
+            cerr << "open(\"" << *it << "\", O_WRONLY|O_NONBLOCK) failed." << endl;
+            result = EXIT_FAILURE;
+        }
+        else {
+            // get the device's state first (feature report nr.7 - 0x07)
+            char buffer[2] = {0x07, 0x00};
+            ioctl(hidraw, HIDIOCGFEATURE(2), buffer);
+
+            // toggle the state
+            if (buffer[1] == 0x00) {
+                buffer[1] = 0x03; // enable touchpad
+            } else {
+                buffer[1] = 0x00; // disable touchpad
+            }
+
+            int result = ioctl(hidraw, HIDIOCSFEATURE(2), buffer);
+            if (result < 0) {
+                cerr << "ioctl on " << *it << " failed." << endl;
+                result = EXIT_FAILURE;
+            }
+
+            close(hidraw);
+        }
+    }
+
+    return result;
+}
