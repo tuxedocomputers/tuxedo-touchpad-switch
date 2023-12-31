@@ -28,6 +28,7 @@
 
 #include "touchpad-control.h"
 #include "setup-gnome.h"
+#include "setup-cinnamon.h"
 #include "setup-kde.h"
 
 using std::cout;
@@ -40,6 +41,7 @@ static void gracefull_exit(int signum = 0) {
     int result = EXIT_SUCCESS;
     
     clean_gnome();
+    clean_cinnamon();
     clean_kde();
     
     if (signum < 0) {
@@ -104,6 +106,13 @@ int main() {
         int ret = setup_gnome(lockfile);
         if (ret != EXIT_SUCCESS) {
             cerr << "main(...): setup_gnome(...) failed." << endl;
+            gracefull_exit(-ret);
+        }
+    }
+    else if (strstr(xdg_current_desktop, "X-Cinnamon")) {
+        int ret = setup_cinnamon(lockfile);
+        if (ret != EXIT_SUCCESS) {
+            cerr << "main(...): setup_cinnamon(...) failed." << endl;
             gracefull_exit(-ret);
         }
     }
