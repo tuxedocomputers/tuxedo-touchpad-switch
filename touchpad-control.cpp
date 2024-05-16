@@ -32,7 +32,6 @@
 
 #include <libudev.h>
 
-using std::cout;
 using std::cerr;
 using std::endl;
 
@@ -141,7 +140,7 @@ int set_touchpad_state(int enabled) {
         return EXIT_FAILURE;
     }
     if (touchpad_count == 0) {
-        cout << "No compatible touchpads found." << endl;
+        cerr << "No compatible touchpads found." << endl;
         return EXIT_FAILURE;
     }
     
