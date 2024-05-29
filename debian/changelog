@@ -1,3 +1,11 @@
+tuxedo-touchpad-switch (1.0.8) jammy; urgency=medium
+
+  [ Werner Sembach ]
+  * Remove obsolete copyright notice
+  * Add Plasma 6 support
+
+ -- Tuxedo BOT <tux@tuxedocomputers.com>  Wed, 29 May 2024 17:06:53 +0200
+
 tuxedo-touchpad-switch (1.0.7) jammy; urgency=medium
 
   [ Werner Sembach ]
